@@ -37,11 +37,13 @@ st.caption(
 # ============================================================
 # Helpers
 # ============================================================
-def pct(x: float) -> str:
+def pct_fmt(x: float) -> str:
     return f"{x:.2%}"
 
 def money(x: float, currency: str = "USD") -> str:
-    # Formato simple y consistente. Si querés “Gs.”, lo ajustamos.
+    # Formato simple; si usás PYG, podés cambiar símbolo.
+    if currency == "PYG":
+        return f"Gs. {x:,.0f}".replace(",", ".")
     return f"${x:,.0f}"
 
 def tri_ok(a, m, b) -> bool:
@@ -56,7 +58,7 @@ def safe_irr(x):
         return None
     if np.isnan(x) or np.isinf(x):
         return None
-    # Filtro conservador: evita irr absurdas por problemas numéricos
+    # Filtro conservador: evita IRR absurdas por problemas numéricos
     if x < -0.99 or x > 2.0:
         return None
     return x
@@ -86,6 +88,18 @@ def _wrap_lines(text: str, max_chars: int = DEFAULT_MAX_CHARS):
     if line:
         out.append(line)
     return out
+
+def detect_non_conventional_flows(cashflows) -> bool:
+    # Flujos no convencionales: más de un cambio de signo
+    signs = []
+    for x in cashflows:
+        if abs(x) < 1e-12:
+            continue
+        signs.append(1 if x > 0 else -1)
+    if len(signs) < 2:
+        return False
+    changes = sum(1 for i in range(1, len(signs)) if signs[i] != signs[i - 1])
+    return changes > 1
 
 
 # ============================================================
@@ -120,8 +134,8 @@ def committee_verdict(prob_neg, p50, p5, max_prob_negative, require_p50_positive
         "en supuestos críticos, justificando reforzar evidencia y mitigaciones antes de una aprobación."
     )
 
-def recommended_actions(prob_neg, p5, p50, capex_base, threshold, driver_focus: str | None):
-    actions: list[str] = []
+def recommended_actions(prob_neg, p5, p50, capex_base, threshold, driver_focus):
+    actions = []
 
     if (prob_neg <= threshold) and (p50 > 0):
         actions.append(
@@ -135,25 +149,18 @@ def recommended_actions(prob_neg, p5, p50, capex_base, threshold, driver_focus: 
             "Documentar supuestos clave (demanda, precio, margen, inversión, tasa) y su justificación, con indicadores observables."
         )
         if driver_focus:
-            actions.append(
-                f"Priorizar evidencia y mitigaciones sobre determinantes con sensibilidad relevante: {driver_focus}."
-            )
+            actions.append(f"Priorizar evidencia y mitigaciones sobre determinantes con sensibilidad relevante: {driver_focus}.")
         return actions
 
-    actions.append(
-        "Fortalecer supuestos fundamentales del caso antes de una aprobación, dado el perfil de riesgo evidenciado."
-    )
+    actions.append("Fortalecer supuestos fundamentales del caso antes de una aprobación, dado el perfil de riesgo evidenciado.")
 
     if prob_neg > threshold:
         actions.append(
             "Reducir incertidumbre en variables críticas mediante evidencia adicional y/o rediseño de supuestos, "
             "dado que P(VAN<0) resulta significativa respecto del umbral definido."
         )
-
     if p50 <= 0:
-        actions.append(
-            "Revisar modelo de ingresos/costos y estructura de inversión para mejorar la robustez del caso base (P50 no favorable)."
-        )
+        actions.append("Revisar modelo de ingresos/costos y estructura de inversión para robustecer el caso base (P50 no favorable).")
 
     if p5 < -0.15 * capex_base:
         actions.append(
@@ -162,14 +169,12 @@ def recommended_actions(prob_neg, p5, p50, capex_base, threshold, driver_focus: 
         )
 
     actions.append(
-        "Líneas de acción: (i) faseo/racionalización del CAPEX, (ii) validación de demanda con indicadores, "
+        "Líneas de acción sugeridas: (i) faseo/racionalización del CAPEX, (ii) validación de demanda con indicadores, "
         "(iii) optimización de márgenes/costos, (iv) mitigación contractual y de ejecución."
     )
 
     if driver_focus:
-        actions.append(
-            f"Tratar como supuestos críticos aquellos vinculados a: {driver_focus}, priorizando evidencia y mitigación."
-        )
+        actions.append(f"Tratar como supuestos críticos aquellos vinculados a: {driver_focus}, priorizando evidencia y mitigación.")
 
     return actions
 
@@ -192,8 +197,9 @@ def run_monte_carlo(
     capex_min: float, capex_mode: float, capex_max: float,
     # Shock FCF nivel (triangular)
     fcf_mult_min: float, fcf_mult_mode: float, fcf_mult_max: float,
+    seed: int = 42,
 ):
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(seed)
 
     g_s = rng.triangular(g_min, g_mode, g_max, sims)
     w_s = rng.triangular(w_min, w_mode, w_max, sims)
@@ -213,7 +219,7 @@ def run_monte_carlo(
     if idx.size == 0:
         return npv_s, g_s, w_s, capex_s, mult_s, idx
 
-    fcf_valid = fcf_paths[idx, :]
+    fcf_valid = fcf_paths[idx, :].copy()
     w_valid = w_s[idx]
     capex_valid = capex_s[idx]
 
@@ -269,7 +275,7 @@ class ExecReport:
     limitations: list[str]
 
 def build_executive_text(r: ExecReport) -> str:
-    irr_text = pct(r.base_irr) if r.base_irr is not None else "N/A (posible no unicidad/no existencia)"
+    irr_text = pct_fmt(r.base_irr) if r.base_irr is not None else "N/A (posible no unicidad/no existencia)"
 
     lines = []
     lines.append(r.institution)
@@ -282,7 +288,6 @@ def build_executive_text(r: ExecReport) -> str:
     lines.append(f"Responsable: {r.responsible}")
     lines.append("")
 
-    # Resumen ejecutivo (3 bullets)
     lines.append("RESUMEN EJECUTIVO")
     lines.append(f"- Dictamen: {r.verdict} {badge(r.verdict)}")
     lines.append(f"- Riesgo: P(VAN<0) = {r.prob_neg:.1%} | P5 = {money(r.p5, r.currency)} | P50 = {money(r.p50, r.currency)}")
@@ -294,8 +299,8 @@ def build_executive_text(r: ExecReport) -> str:
     lines.append("")
     lines.append("2. Indicadores principales")
     lines.append(f"- CAPEX (Año 0): {money(r.capex0, r.currency)} ({r.currency})")
-    lines.append(f"- WACC: {pct(r.wacc)} | Ke: {pct(r.ke)} | Kd: {pct(r.kd)}")
-    lines.append(f"- Parámetros: Rf {pct(r.rf)} | ERP {pct(r.erp)} | CRP {pct(r.crp)} | βU {r.beta_u:.2f} | βL {r.beta_l:.2f}")
+    lines.append(f"- WACC: {pct_fmt(r.wacc)} | Ke: {pct_fmt(r.ke)} | Kd: {pct_fmt(r.kd)}")
+    lines.append(f"- Parámetros: Rf {pct_fmt(r.rf)} | ERP {pct_fmt(r.erp)} | CRP {pct_fmt(r.crp)} | βU {r.beta_u:.2f} | βL {r.beta_l:.2f}")
     lines.append(f"- VAN base (determinístico): {money(r.base_npv, r.currency)}")
     lines.append(f"- TIR base (determinística): {irr_text}")
     lines.append(f"- Monte Carlo: {r.sims:,} simulaciones")
@@ -313,7 +318,6 @@ def build_executive_text(r: ExecReport) -> str:
             f"Se observa sensibilidad relevante asociada a: {r.driver_focus} "
             f"(señal orientativa para priorización de supuestos críticos; no implica causalidad)."
         )
-
     lines.append("")
     lines.append("4. Criterios del Comité")
     if r.criteria_lines:
@@ -431,10 +435,10 @@ def generate_pdf_2pages(report: ExecReport, logo_reader=None) -> bytes:
     y -= 6
 
     y = h2(y, "Indicadores principales")
-    irr_text = pct(report.base_irr) if report.base_irr is not None else "N/A (posible no unicidad/no existencia)"
+    irr_text = pct_fmt(report.base_irr) if report.base_irr is not None else "N/A (posible no unicidad/no existencia)"
     y = bullets(y, [
         f"CAPEX (Año 0): {money(report.capex0, report.currency)} ({report.currency})",
-        f"WACC: {pct(report.wacc)} | Ke: {pct(report.ke)} | Kd: {pct(report.kd)}",
+        f"WACC: {pct_fmt(report.wacc)} | Ke: {pct_fmt(report.ke)} | Kd: {pct_fmt(report.kd)}",
         f"VAN base: {money(report.base_npv, report.currency)} | TIR base: {irr_text}",
         f"Monte Carlo: {report.sims:,} simulaciones | P(VAN<0) {report.prob_neg:.1%}",
         f"P5: {money(report.p5, report.currency)} | P50: {money(report.p50, report.currency)} | P95: {money(report.p95, report.currency)}",
@@ -532,4 +536,361 @@ beta_u = st.sidebar.number_input("βU (desapalancada)", value=0.90, step=0.05)
 tax_rate = st.sidebar.number_input("Impuesto T (%)", value=10.0, step=0.5) / 100
 
 st.sidebar.divider()
-st.sidebar.header("2) Estructura de capital (para WACC
+st.sidebar.header("2) Estructura de capital (para WACC)")
+debt = st.sidebar.number_input("Deuda D", value=400000.0, step=10000.0, min_value=0.0)
+equity = st.sidebar.number_input("Capital propio E", value=600000.0, step=10000.0, min_value=1.0)
+kd = st.sidebar.number_input("Costo de deuda Kd (%)", value=7.0, step=0.1) / 100
+
+st.sidebar.divider()
+st.sidebar.header("3) Proyecciones (DCF)")
+n_years = st.sidebar.slider("Años de proyección explícita", 1, 10, 5)
+fcf_y1 = st.sidebar.number_input("FCF Año 1", value=100000.0, step=5000.0, min_value=0.0)
+g_exp = st.sidebar.number_input("g (crecimiento explícito %) ", value=5.0, step=0.25) / 100
+g_inf = st.sidebar.number_input("g∞ (crecimiento perpetuo %) ", value=2.0, step=0.10) / 100
+
+st.sidebar.caption("Regla técnica: para TV (Gordon), se requiere WACC > g∞. En Monte Carlo se exige WACC > g∞ + 0.5%.")
+
+st.sidebar.divider()
+st.sidebar.header("4) Monte Carlo")
+use_mc = st.sidebar.checkbox("Activar simulación Monte Carlo", value=True)
+sims = st.sidebar.slider("Simulaciones", 1000, 50000, 10000, 1000)
+seed = st.sidebar.number_input("Semilla (reproducibilidad)", value=42, step=1)
+
+st.sidebar.subheader("Rangos triangulares – g (explícito)")
+g_min = st.sidebar.number_input("g mínimo (%)", value=1.0, step=0.25) / 100
+g_mode = st.sidebar.number_input("g más probable (%)", value=5.0, step=0.25) / 100
+g_max = st.sidebar.number_input("g máximo (%)", value=9.0, step=0.25) / 100
+
+st.sidebar.subheader("Rangos triangulares – CAPEX (Año 0)")
+capex_min = st.sidebar.number_input("CAPEX mínimo", value=450000.0, step=10000.0, min_value=1.0)
+capex_mode = st.sidebar.number_input("CAPEX más probable", value=500000.0, step=10000.0, min_value=1.0)
+capex_max = st.sidebar.number_input("CAPEX máximo", value=600000.0, step=10000.0, min_value=1.0)
+
+st.sidebar.subheader("Shock al nivel de FCF Año 1 (multiplicador)")
+st.sidebar.caption("Representa shocks de demanda/margen. Ej.: 0.9 = -10%, 1.1 = +10%.")
+fcf_mult_min = st.sidebar.number_input("Multiplicador mínimo", value=0.85, step=0.01, min_value=0.01)
+fcf_mult_mode = st.sidebar.number_input("Multiplicador más probable", value=1.00, step=0.01, min_value=0.01)
+fcf_mult_max = st.sidebar.number_input("Multiplicador máximo", value=1.15, step=0.01, min_value=0.01)
+
+st.sidebar.subheader("Rangos triangulares – WACC")
+auto_wacc = st.sidebar.checkbox("Auto WACC (±2% absoluto alrededor del WACC calculado)", value=True)
+if auto_wacc:
+    w_min = None
+    w_mode = None
+    w_max = None
+else:
+    w_min = st.sidebar.number_input("WACC mínimo (%)", value=9.0, step=0.25) / 100
+    w_mode = st.sidebar.number_input("WACC más probable (%)", value=11.0, step=0.25) / 100
+    w_max = st.sidebar.number_input("WACC máximo (%)", value=13.0, step=0.25) / 100
+
+st.sidebar.divider()
+st.sidebar.header("5) Criterios del Comité")
+committee_on = st.sidebar.checkbox("Activar dictamen automático (comité)", value=True)
+max_prob_negative = st.sidebar.slider("Umbral máximo P(VAN<0)", 0.0, 0.8, 0.2, 0.01)
+require_p50_positive = st.sidebar.checkbox("Exigir P50(VAN) > 0", value=True)
+use_p5_floor = st.sidebar.checkbox("Exigir P5(VAN) ≥ piso", value=False)
+p5_floor = st.sidebar.number_input("Piso P5 (si aplica)", value=0.0, step=10000.0)
+
+st.sidebar.divider()
+st.sidebar.header("6) Limitaciones (para el informe)")
+lim_defaults = [
+    "Los resultados dependen de la calidad de los supuestos; la herramienta no reemplaza evidencia empírica.",
+    "La estimación de WACC y CRP puede variar según fuentes y metodología; se recomienda documentar racionalidad.",
+    "El valor terminal (Gordon) requiere consistencia macro y WACC > g∞; su sensibilidad debe ser evaluada.",
+    "La simulación Monte Carlo refleja incertidumbre según rangos definidos por el usuario; no predice el futuro."
+]
+limitations = st.sidebar.multiselect("Seleccionar limitaciones", lim_defaults, default=lim_defaults)
+
+
+# ============================================================
+# Cálculos determinísticos (DCF + WACC)
+# ============================================================
+beta_l = beta_u * (1.0 + (1.0 - tax_rate) * (debt / equity))
+ke = rf + beta_l * erp + (crp if use_crp else 0.0)
+
+total_cap = debt + equity
+wacc = (equity / total_cap) * ke + (debt / total_cap) * kd * (1.0 - tax_rate)
+
+# DCF flujos
+years = np.arange(1, n_years + 1)
+fcf = np.array([fcf_y1 * (1.0 + g_exp) ** (t - 1) for t in years], dtype=float)
+
+# Validación TV
+if wacc <= g_inf:
+    st.error("Condición inválida: WACC debe ser mayor que g∞ para calcular el valor terminal (Gordon-Shapiro).")
+    st.stop()
+
+tv = (fcf[-1] * (1.0 + g_inf)) / (wacc - g_inf)
+
+# VAN determinístico
+disc = (1.0 + wacc) ** years
+pv = np.sum(fcf / disc) + tv / ((1.0 + wacc) ** n_years)
+base_npv = pv - capex0
+
+# TIR determinística
+cash_for_irr = np.concatenate(([-capex0], fcf[:-1], [fcf[-1] + tv]))
+irr_raw = npf.irr(cash_for_irr)
+base_irr = safe_irr(irr_raw)
+
+nonconv = detect_non_conventional_flows(cash_for_irr)
+
+# ============================================================
+# Vista principal – métricas
+# ============================================================
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("βU / βL", f"{beta_u:.2f} / {beta_l:.2f}")
+c2.metric("Ke / Kd", f"{pct_fmt(ke)} / {pct_fmt(kd)}")
+c3.metric("WACC", pct_fmt(wacc))
+c4.metric("VAN (base)", money(base_npv, currency))
+
+st.caption("Nota: si hay flujos no convencionales, la TIR puede no ser única o no ser interpretable como criterio primario.")
+if nonconv:
+    st.warning("Se detectaron flujos **no convencionales** (más de un cambio de signo). En comité, el criterio preferente es el **VAN**.")
+
+st.write("**TIR (base):** " + (pct_fmt(base_irr) if base_irr is not None else "N/A (posible no unicidad/no existencia)"))
+
+# ============================================================
+# Gráfico de flujos
+# ============================================================
+st.subheader("Proyección de flujos de caja (período explícito)")
+df_flows = {"Año": years, "FCF": fcf}
+fig_flows = px.bar(df_flows, x="Año", y="FCF", title="FCF (Explícito)")
+st.plotly_chart(fig_flows, use_container_width=True)
+
+st.info(f"**Valor Terminal (TV)** incorporado al final del año {n_years}: {money(tv, currency)}")
+
+# ============================================================
+# Explicaciones (in-app)
+# ============================================================
+with st.expander("📚 Explicaciones (g vs g∞, DCF, βU/βL, percentiles y flujos no convencionales)"):
+    st.markdown(
+        f"""
+**g (crecimiento explícito) vs g∞ (crecimiento perpetuo)**  
+- **g (explícito)**: tasa aplicada durante los **años proyectados** (1..N).  
+- **g∞**: tasa de crecimiento de largo plazo utilizada para estimar el **valor terminal** (continuidad del negocio).  
+Regla técnica: para un valor terminal coherente se requiere **WACC > g∞**.
+
+**DCF (Discounted Cash Flow)**  
+El DCF estima el valor económico descontando los flujos futuros (FCF) a una tasa que refleje el riesgo (**WACC**).  
+En esta aplicación: valor presente de FCF (1..N) + valor terminal descontado – CAPEX (año 0).
+
+**βU y βL (Hamada)**  
+- **βU** (desapalancada): riesgo del negocio sin efecto de deuda.  
+- **βL** (apalancada): riesgo del equity considerando deuda (D/E). A mayor apalancamiento, mayor βL y, típicamente, mayor Ke.
+
+**P5, P50, P95 (Monte Carlo)**  
+Percentiles del VAN simulado:  
+- **P50**: mediana (resultado “central” probabilístico).  
+- **P5**: escenario adverso plausible.  
+- **P95**: escenario favorable plausible.
+
+**Flujos no convencionales**  
+Si los flujos cambian de signo más de una vez, la **TIR** puede ser múltiple o no representar adecuadamente la decisión.  
+En comité, se privilegia el **VAN** (y el análisis de riesgo).
+"""
+    )
+
+# ============================================================
+# Monte Carlo + comité
+# ============================================================
+st.header("🎲 Monte Carlo y Comité")
+if use_mc:
+    if not tri_ok(g_min, g_mode, g_max):
+        st.error("Rango triangular inválido para g: debe cumplirse g_min ≤ g_mode ≤ g_max.")
+        st.stop()
+    if not tri_ok(capex_min, capex_mode, capex_max):
+        st.error("Rango triangular inválido para CAPEX: debe cumplirse min ≤ mode ≤ max.")
+        st.stop()
+    if not tri_ok(fcf_mult_min, fcf_mult_mode, fcf_mult_max):
+        st.error("Rango triangular inválido para multiplicador FCF: min ≤ mode ≤ max.")
+        st.stop()
+
+    if auto_wacc:
+        w_min_mc = max(0.0001, wacc - 0.02)
+        w_mode_mc = max(0.0001, wacc)
+        w_max_mc = max(0.0001, wacc + 0.02)
+    else:
+        if not tri_ok(w_min, w_mode, w_max):
+            st.error("Rango triangular inválido para WACC: debe cumplirse min ≤ mode ≤ max.")
+            st.stop()
+        w_min_mc, w_mode_mc, w_max_mc = w_min, w_mode, w_max
+
+    # Asegurar spread mínimo para TV
+    if w_min_mc <= g_inf + MIN_SPREAD:
+        st.warning("WACC mínimo es demasiado cercano a g∞. Se ajustará internamente para mantener coherencia en TV.")
+        w_min_mc = g_inf + MIN_SPREAD + 0.0005
+        w_mode_mc = max(w_mode_mc, g_inf + MIN_SPREAD + 0.0010)
+        w_max_mc = max(w_max_mc, g_inf + MIN_SPREAD + 0.0015)
+
+    npv_s, g_s, w_s, capex_s, mult_s, idx = run_monte_carlo(
+        sims=sims,
+        fcf_y1=fcf_y1,
+        n_years=n_years,
+        g_inf=g_inf,
+        min_spread=MIN_SPREAD,
+        g_min=g_min, g_mode=g_mode, g_max=g_max,
+        w_min=w_min_mc, w_mode=w_mode_mc, w_max=w_max_mc,
+        capex_min=capex_min, capex_mode=capex_mode, capex_max=capex_max,
+        fcf_mult_min=fcf_mult_min, fcf_mult_mode=fcf_mult_mode, fcf_mult_max=fcf_mult_max,
+        seed=int(seed),
+    )
+
+    valid_npvs = npv_s[~np.isnan(npv_s)]
+    if valid_npvs.size < 100:
+        st.error("Muy pocas simulaciones válidas. Revise rangos de WACC y g∞ (condición WACC > g∞ + spread).")
+        st.stop()
+
+    p5 = float(np.percentile(valid_npvs, 5))
+    p50 = float(np.percentile(valid_npvs, 50))
+    p95 = float(np.percentile(valid_npvs, 95))
+    prob_neg = float(np.mean(valid_npvs < 0))
+
+    # Correlaciones (orientativas)
+    corr_g = safe_corr(valid_npvs, g_s[~np.isnan(npv_s)])
+    corr_w = safe_corr(valid_npvs, w_s[~np.isnan(npv_s)])
+    corr_capex = safe_corr(valid_npvs, capex_s[~np.isnan(npv_s)])
+    corr_mult = safe_corr(valid_npvs, mult_s[~np.isnan(npv_s)])
+
+    corrs = {
+        "g (crecimiento explícito)": corr_g,
+        "WACC": corr_w,
+        "CAPEX": corr_capex,
+        "Shock FCF (multiplicador)": corr_mult,
+    }
+    # driver_focus: el de mayor |corr|
+    driver_focus = None
+    if all(np.isnan(v) for v in corrs.values()) is False:
+        driver_focus = max(corrs.items(), key=lambda kv: (0 if np.isnan(kv[1]) else abs(kv[1])))[0]
+
+    d1, d2, d3, d4 = st.columns(4)
+    d1.metric("P(VAN<0)", f"{prob_neg:.1%}")
+    d2.metric("P5 (VAN)", money(p5, currency))
+    d3.metric("P50 (VAN)", money(p50, currency))
+    d4.metric("P95 (VAN)", money(p95, currency))
+
+    st.subheader("Distribución del VAN (Monte Carlo)")
+    fig_hist = px.histogram(x=valid_npvs, nbins=40, title="Distribución del VAN simulado")
+    fig_hist.update_layout(xaxis_title="VAN", yaxis_title="Frecuencia")
+    st.plotly_chart(fig_hist, use_container_width=True)
+
+    st.subheader("Interpretación no técnica (lectura ejecutiva)")
+    st.success(
+        f"En términos probabilísticos, el resultado central (P50) se ubica en {money(p50, currency)}. "
+        f"El escenario adverso plausible (P5) alcanza {money(p5, currency)}. "
+        f"La probabilidad estimada de destrucción de valor P(VAN<0) es {prob_neg:.1%}."
+    )
+
+    if driver_focus:
+        st.caption(f"Señal orientativa de sensibilidad: el VAN se asocia con variaciones en **{driver_focus}** (correlación como guía, no causalidad).")
+
+    # Comité
+    criteria_lines = []
+    if committee_on:
+        criteria_lines.append(f"P(VAN<0) ≤ {max_prob_negative:.0%}: {'Cumple' if prob_neg <= max_prob_negative else 'No cumple'}")
+        if require_p50_positive:
+            criteria_lines.append(f"P50(VAN) > 0: {'Cumple' if p50 > 0 else 'No cumple'}")
+        if use_p5_floor:
+            criteria_lines.append(f"P5(VAN) ≥ {money(p5_floor, currency)}: {'Cumple' if p5 >= p5_floor else 'No cumple'}")
+
+        verdict, rationale = committee_verdict(
+            prob_neg=prob_neg,
+            p50=p50,
+            p5=p5,
+            max_prob_negative=max_prob_negative,
+            require_p50_positive=require_p50_positive,
+            use_p5_floor=use_p5_floor,
+            p5_floor=p5_floor
+        )
+        st.subheader(f"Dictamen del Comité: {verdict} {badge(verdict)}")
+        if verdict == "APROBADO":
+            st.success(rationale)
+        elif verdict == "OBSERVADO":
+            st.warning(rationale)
+        else:
+            st.error(rationale)
+
+        actions = recommended_actions(
+            prob_neg=prob_neg,
+            p5=p5,
+            p50=p50,
+            capex_base=capex0,
+            threshold=max_prob_negative,
+            driver_focus=driver_focus
+        )
+
+        st.markdown("**Recomendación y plan de acción (control formativo):**")
+        for a in actions:
+            st.write(f"- {a}")
+    else:
+        verdict, rationale = "N/A", "Modo comité desactivado."
+        actions = []
+else:
+    st.info("Monte Carlo desactivado. Puede activarlo para obtener percentiles (P5/P50/P95) y P(VAN<0).")
+    # valores mínimos para reporte
+    prob_neg, p5, p50, p95 = np.nan, np.nan, np.nan, np.nan
+    verdict, rationale = "N/A", "Simulación desactivada."
+    criteria_lines, driver_focus, actions = [], None, []
+
+# ============================================================
+# Informe ejecutivo + PDF
+# ============================================================
+st.header("🧾 Informe Ejecutivo")
+crp_approach = "CRP incorporado en Ke (CAPM extendido)" if use_crp else "CRP no incorporado (Ke sin prima país explícita)"
+
+report = ExecReport(
+    institution=institution,
+    program=program,
+    course=course,
+    project=project,
+    responsible=responsible,
+    currency=currency,
+    basis=basis,
+    d_e_basis=d_e_basis,
+    crp_approach=crp_approach,
+    capex0=capex0,
+    wacc=wacc,
+    ke=ke,
+    kd=kd,
+    rf=rf,
+    erp=erp,
+    crp=crp if use_crp else 0.0,
+    beta_u=beta_u,
+    beta_l=beta_l,
+    base_npv=base_npv,
+    base_irr=base_irr,
+    sims=int(sims) if use_mc else 0,
+    prob_neg=float(prob_neg) if use_mc else 0.0,
+    p5=float(p5) if use_mc else 0.0,
+    p50=float(p50) if use_mc else 0.0,
+    p95=float(p95) if use_mc else 0.0,
+    verdict=verdict if committee_on else "N/A",
+    rationale=rationale,
+    criteria_lines=criteria_lines,
+    driver_focus=driver_focus,
+    actions=actions if actions else ["Definir supuestos, documentar evidencia y completar el modelo financiero antes de emitir dictamen."],
+    limitations=limitations,
+)
+
+exec_text = build_executive_text(report)
+st.text_area("Informe (copiar/pegar)", value=exec_text, height=360)
+
+col_pdf1, col_pdf2 = st.columns([1, 2])
+with col_pdf1:
+    if REPORTLAB_OK:
+        try:
+            pdf_bytes = generate_pdf_2pages(report, logo_reader=logo_reader)
+            st.download_button(
+                "📥 Descargar PDF (2 páginas)",
+                data=pdf_bytes,
+                file_name=f"Informe_Ejecutivo_{project.replace(' ', '_')}.pdf",
+                mime="application/pdf",
+            )
+        except Exception as e:
+            st.error(f"No se pudo generar PDF: {e}")
+    else:
+        st.warning("PDF deshabilitado: falta `reportlab` en requirements.txt.")
+with col_pdf2:
+    st.caption("Sugerencia operativa: en Streamlit Cloud, agregá `reportlab` a `requirements.txt` para habilitar el PDF.")
+
+st.divider()
+st.caption("Fin del reporte. Esta herramienta tiene fines académicos y no sustituye evidencia empírica ni due diligence.")
