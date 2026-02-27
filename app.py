@@ -923,7 +923,7 @@ with colx2:
         except Exception as e:
             st.warning(f"No se pudo generar PDF: {e}")
     else:
-        st.info("Para exportar PDF, agrega `reportlab` a requirements.txt."
+        st.info("Para exportar PDF, agrega `reportlab` a requirements.txt.")
 
 def fmt_pct(x: float) -> str:
     try:
