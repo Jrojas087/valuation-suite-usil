@@ -564,10 +564,31 @@ st.markdown("<div class='note'>Uso académico (MBA). Resultados dependen de supu
 # ----------------------------
 # Export: One‑Pager PDF (1 página, sin matplotlib)
 # ----------------------------
+from dataclasses import dataclass, field
+from typing import Optional, List
+
 @dataclass
 class OnePagerData:
+    # obligatorios (sin default) — primero SIEMPRE
     project: str
     responsible: str
+    capex0: float
+    wacc: float
+    npv_base: float
+
+    # opcionales (con default) — después
+    irr_base: Optional[float] = None
+    pb_simple: Optional[float] = None
+    pb_disc: Optional[float] = None
+
+    sims: int = 0
+    prob_neg: float = 0.0
+    p5: float = 0.0
+    p50: float = 0.0
+    p95: float = 0.0
+
+    criteria_lines: List[str] = field(default_factory=list)
+    limitations: List[str] = field(default_factory=list)
 
     # Determinístico
     capex0: float
