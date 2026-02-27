@@ -1,149 +1,86 @@
-# app.py — ValuationSuite USIL (PYG)
-# Streamlit one-pager dashboard + PDF export (premium)
-# Author: generated with ChatGPT for Jorge Rojas (USIL MBA)
+# app.py
+# ValuationSuite USIL (PYG) — Streamlit One‑Pager Dashboard + PDF Premium
+# Autor: (generado con ayuda de ChatGPT)
+# ------------------------------------------------------------
+# Requisitos: ver requirements.txt (NO usa matplotlib; PDF 100% reportlab)
 
 import io
-import math
-import textwrap
 from dataclasses import dataclass
 from datetime import date
 
 import numpy as np
 import numpy_financial as npf
+import plotly.express as px
 import streamlit as st
-import plotly.graph_objects as go
 
-# -----------------------------
-# Optional deps for PDF
-# -----------------------------
-REPORTLAB_OK = True
-MATPLOTLIB_OK = True
-try:
-    from reportlab.lib.pagesizes import A4
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.units import cm
-    from reportlab.lib.utils import ImageReader
-    from reportlab.lib import colors
-except Exception:
-    REPORTLAB_OK = False
+import report_usil as rep
 
-try:
-    import matplotlib.pyplot as plt
-except Exception:
-    MATPLOTLIB_OK = False
 
-# -----------------------------
-# Config
-# -----------------------------
-MIN_SPREAD = 0.005  # WACC must be > g∞ + 0.5%
-DEFAULT_SIMS = 15000
-
-st.set_page_config(page_title="ValuationSuite USIL (PYG)", layout="wide")
-
-# -----------------------------
-# Styling (premium dashboard)
-# -----------------------------
-st.markdown(
-    """
-<style>
-:root{
-  --bg:#070B14;
-  --card:#0D1626;
-  --card2:#0B1322;
-  --stroke:rgba(255,255,255,.08);
-  --text:rgba(255,255,255,.92);
-  --muted:rgba(255,255,255,.65);
-  --accent:#38bdf8;
-  --accent2:#22c55e;
-}
-.stApp{ background: radial-gradient(1200px 700px at 15% 10%, rgba(56,189,248,.18), transparent 55%),
-                 radial-gradient(900px 600px at 85% 30%, rgba(34,197,94,.12), transparent 60%),
-                 linear-gradient(180deg, #060913, #050712 70%, #040510) !important; }
-.block-container{ padding-top: 1.2rem; padding-bottom: 2.0rem; max-width: 1250px; }
-h1,h2,h3{ color: var(--text); }
-.small-muted{ color: var(--muted); font-size: .9rem; }
-
-/* Card */
-.card{
-  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-  border: 1px solid var(--stroke);
-  border-radius: 16px;
-  padding: 14px 14px 10px 14px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.35);
-}
-.card h4{ margin:0 0 6px 0; font-size: clamp(.86rem, 1.6vw, .98rem); color: var(--muted); font-weight: 650; }
-.card .big{ font-size: clamp(1.05rem, 2.2vw, 1.45rem); font-weight: 800; color: var(--text); line-height: 1.15; letter-spacing: -0.2px; }
-.card .sub{ font-size:.86rem; color: var(--muted); margin-top: 2px; }
-
-.pill{
-  display:inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--stroke);
-  background: rgba(255,255,255,.03);
-  font-size: .85rem;
-  color: var(--muted);
-}
-.pill.ok{ background: rgba(34,197,94,.12); color: rgba(203,255,226,.95); border-color: rgba(34,197,94,.25); }
-.pill.warn{ background: rgba(245,158,11,.12); color: rgba(255,236,201,.95); border-color: rgba(245,158,11,.25); }
-.pill.bad{ background: rgba(239,68,68,.10); color: rgba(255,210,210,.95); border-color: rgba(239,68,68,.25); }
-
-.hr{
-  height:1px; background: var(--stroke); margin: 10px 0 12px 0;
-}
-/* Sidebar */
-section[data-testid="stSidebar"]{
-  background: rgba(13,22,38,.65);
-  border-right: 1px solid var(--stroke);
-}
-/* Reduce Plotly background */
-.js-plotly-plot .plotly .main-svg{ font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-
-/* Responsive typography (mobile) */
-@media (max-width: 900px){
-  .titlebar h2{ font-size: 1.08rem; }
-  .pill{ font-size: .74rem; padding: 5px 9px; }
-  .card{ padding: 14px; }
-}
-@media (max-width: 600px){
-  .wrap{ padding: 14px 10px 18px 10px; }
-  .titlebar{ gap: 10px; }
-  .titlebar h2{ font-size: 1.0rem; line-height: 1.2; }
-  .meta{ font-size: .80rem; }
-  .big{ font-size: 1.20rem; }
-  .sub{ font-size: .78rem; }
-  /* Avoid clipped text in KPIs */
-  .card{ min-height: unset; }
-}
-@media (max-width: 420px){
-  .titlebar h2{ font-size: .96rem; }
-  .pill{ font-size: .70rem; }
-  .big{ font-size: 1.12rem; }
-}
-
-</style>
-""",
-    unsafe_allow_html=True,
+# ============================================================
+# Config UI
+# ============================================================
+st.set_page_config(
+    page_title="ValuationSuite USIL — Evaluación Financiera (PYG)",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-# -----------------------------
-# Helpers
-# -----------------------------
-def fmt_pyg(x: float) -> str:
-    try:
-        x = float(x)
-    except Exception:
-        return "Gs. —"
-    sign = "-" if x < 0 else ""
-    x = abs(x)
-    return f"{sign}Gs. {x:,.0f}".replace(",", ".")
+# ============================================================
+# Estilo (premium dark dashboard)
+# ============================================================
+DARK_CSS = """
+<style>
+:root{
+  --bg0:#050914; --bg1:#071026; --card:#0b1733; --card2:#0d1b3d;
+  --line:rgba(255,255,255,.08); --text:#eaf1ff; --muted:rgba(234,241,255,.72);
+  --accent:#66a9ff; --good:#27d17c; --warn:#ffcc66; --bad:#ff5d5d;
+}
+html, body, [class*="stApp"] { background: radial-gradient(1200px 700px at 20% 0%, #0a1736 0%, var(--bg0) 55%, #04070f 100%) !important; color: var(--text) !important; }
+h1,h2,h3,h4,h5,h6, p, div, span, label { color: var(--text); }
+[data-testid="stSidebar"]{ background: linear-gradient(180deg, var(--bg1), #050914) !important; border-right: 1px solid var(--line); }
+[data-testid="stMetric"]{ background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border: 1px solid var(--line); padding: 14px 14px; border-radius: 14px; }
+.block-container { padding-top: 1.2rem; }
+hr { border-color: var(--line); }
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px 18px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+.card h3 { margin: 0 0 8px 0; font-size: 1.05rem; }
+.small { color: var(--muted); font-size: .88rem; }
+.pill {
+  display:inline-block; padding: 6px 10px; border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(102,169,255,.10);
+  font-weight: 700; letter-spacing: .02em;
+}
+.pill.good{ background: rgba(39,209,124,.12); }
+.pill.warn{ background: rgba(255,204,102,.12); }
+.pill.bad{ background: rgba(255,93,93,.12); }
+.kpiSub { color: var(--muted); font-size: .82rem; margin-top: -2px; }
+</style>
+"""
+st.markdown(DARK_CSS, unsafe_allow_html=True)
+
+st.title("📊 ValuationSuite USIL — One‑Pager Ejecutivo (PYG)")
+st.caption("DCF + lectura probabilística (Monte Carlo). Modelo didáctico para toma de decisiones. 🇵🇾")
+
+
+# ============================================================
+# Utilidades
+# ============================================================
+MIN_SPREAD = 0.005  # wacc > g_inf + spread
 
 def fmt_pct(x: float) -> str:
-    if x is None or (isinstance(x, float) and (np.isnan(x) or np.isinf(x))):
-        return "—"
     return f"{x*100:.2f}%"
 
-def safe_float(x, default=0.0):
+def fmt_pyg(x: float) -> str:
+    # Gs. con separador de miles, 0 decimales (PYG)
+    return "Gs. {:,.0f}".format(float(x)).replace(",", ".")
+
+def safe_float(x, default=0.0) -> float:
     try:
         v = float(x)
         if np.isnan(v) or np.isinf(v):
@@ -152,733 +89,519 @@ def safe_float(x, default=0.0):
     except Exception:
         return default
 
-def safe_irr(cashflows: list[float]):
+def safe_irr(cashflows):
     try:
         irr = float(npf.irr(cashflows))
         if np.isnan(irr) or np.isinf(irr):
             return None
-        # guardrail: unrealistic outputs often indicate multiple roots/ill-conditioned
+        # filtro conservador
         if irr < -0.99 or irr > 2.0:
             return None
         return irr
     except Exception:
         return None
 
-def payback_simple(cashflows: list[float]):
-    # cashflows: t0..tN, t0 negative
-    cum = 0.0
-    for t, cf in enumerate(cashflows):
-        cum += cf
-        if t == 0:
-            continue
+def payback_simple(capex0: float, fcfs: np.ndarray) -> float | None:
+    cum = -capex0
+    for i, f in enumerate(fcfs, start=1):
+        prev = cum
+        cum += f
         if cum >= 0:
-            prev = cum - cf
-            if cf == 0:
-                return float(t)
-            frac = (0 - prev) / cf
-            return (t - 1) + frac
+            if f == 0:
+                return float(i)
+            frac = (0 - prev) / f
+            return float((i-1) + frac)
     return None
 
-def payback_discounted(cashflows: list[float], r: float):
-    cum = 0.0
-    for t, cf in enumerate(cashflows):
-        if t == 0:
-            cum += cf
-            continue
-        pv = cf / ((1 + r) ** t)
+def payback_discounted(capex0: float, fcfs: np.ndarray, wacc: float) -> float | None:
+    cum = -capex0
+    for i, f in enumerate(fcfs, start=1):
+        pv = f / ((1+wacc)**i)
+        prev = cum
         cum += pv
         if cum >= 0:
-            prev = cum - pv
             if pv == 0:
-                return float(t)
+                return float(i)
             frac = (0 - prev) / pv
-            return (t - 1) + frac
+            return float((i-1) + frac)
     return None
 
-def verdict_from_checks(van_ok, pneg_ok, p50_ok, p5_ok):
-    n_ok = sum([van_ok, pneg_ok, p50_ok, p5_ok])
-    if n_ok == 4:
-        return "APROBADO", "ok"
-    if n_ok <= 1:
-        return "RECHAZADO", "bad"
-    return "OBSERVADO", "warn"
+def committee_check(npv_base: float, prob_neg: float, p50: float, p5: float) -> tuple[str, list[tuple[str,bool]]]:
+    checks = [
+        ("VAN base > 0", npv_base > 0),
+        ("P(VAN<0) ≤ 20%", prob_neg <= 0.20),
+        ("P50(VAN) > 0", p50 > 0),
+        ("P5(VAN) > 0", p5 > 0),
+    ]
+    ok = sum(b for _, b in checks)
+    if ok == len(checks):
+        return "APROBADO", checks
+    if ok == 0:
+        return "RECHAZADO", checks
+    return "OBSERVADO", checks
 
-def triangular(rng, a, m, b, n):
-    a, m, b = float(a), float(m), float(b)
-    if not (a <= m <= b):
-        # fallback to a symmetric-ish triangle
-        m = min(max(m, a), b)
-    return rng.triangular(a, m, b, n)
 
-# -----------------------------
-# Monte Carlo engine
-# -----------------------------
+# ============================================================
+# Monte Carlo (triangular) — sin semilla expuesta
+# ============================================================
 @st.cache_data(show_spinner=False)
 def run_monte_carlo(
     sims: int,
-    fcf1: float,
+    fcf_y1: float,
     n_years: int,
     g_inf: float,
-    wacc_base: float,
-    wacc_pm: float,
+    # tri g explícito
     g_min: float, g_mode: float, g_max: float,
+    # tri wacc (desde ±range alrededor del wacc base)
+    w_min: float, w_mode: float, w_max: float,
+    # tri capex0
     capex_min: float, capex_mode: float, capex_max: float,
+    # tri shock FCF1
     fcf_mult_min: float, fcf_mult_mode: float, fcf_mult_max: float,
 ):
-    rng = np.random.default_rng()  # internal seed (not exposed)
+    rng = np.random.default_rng()
 
-    g_s = triangular(rng, g_min, g_mode, g_max, sims)
-    w_s = triangular(rng, wacc_base * (1 - wacc_pm), wacc_base, wacc_base * (1 + wacc_pm), sims)
-    capex0_s = triangular(rng, capex_min, capex_mode, capex_max, sims)
-    mult_s = triangular(rng, fcf_mult_min, fcf_mult_mode, fcf_mult_max, sims)
+    g_s = rng.triangular(g_min, g_mode, g_max, sims)
+    w_s = rng.triangular(w_min, w_mode, w_max, sims)
+    capex_s = rng.triangular(capex_min, capex_mode, capex_max, sims)
+    mult_s = rng.triangular(fcf_mult_min, fcf_mult_mode, fcf_mult_max, sims)
 
-    yrs = np.arange(1, n_years + 1, dtype=float)
-    fcf1_s = fcf1 * mult_s
-    fcf_paths = fcf1_s[:, None] * (1 + g_s)[:, None] ** (yrs[None, :] - 1)
+    yrs = np.arange(1, n_years + 1)
+    fcf1_s = fcf_y1 * mult_s
+    fcf_paths = fcf1_s[:, None] * (1.0 + g_s)[:, None] ** (yrs[None, :] - 1)
 
     valid = w_s > (g_inf + MIN_SPREAD)
-    npv = np.full(sims, np.nan, dtype=float)
+    npv_s = np.full(sims, np.nan)
 
     idx = np.where(valid)[0]
-    if idx.size == 0:
-        return npv, valid
+    if idx.size:
+        fcf_valid = fcf_paths[idx, :]
+        w_valid = w_s[idx]
+        capex_valid = capex_s[idx]
 
-    fcf_v = fcf_paths[idx, :]
-    w_v = w_s[idx]
-    capex0_v = capex0_s[idx]
+        tv_valid = (fcf_valid[:, -1] * (1.0 + g_inf)) / (w_valid - g_inf)
+        fcf_valid[:, -1] += tv_valid
 
-    tv = (fcf_v[:, -1] * (1 + g_inf)) / (w_v - g_inf)
-    fcf_v[:, -1] = fcf_v[:, -1] + tv
+        disc = (1.0 + w_valid)[:, None] ** (yrs[None, :])
+        pv = np.sum(fcf_valid / disc, axis=1)
+        npv_s[idx] = pv - capex_valid
 
-    disc = (1 + w_v)[:, None] ** (yrs[None, :])
-    pv = np.sum(fcf_v / disc, axis=1)
-    npv[idx] = pv - capex0_v
-
-    return npv, valid
-
-# -----------------------------
-# PDF helpers
-# -----------------------------
-def _mpl_value_bridge(pv_fcf, pv_tv, capex0):
-    fig, ax = plt.subplots(figsize=(4.0, 1.8), dpi=200)
-    ax.barh(["VAN"], [pv_fcf], label="PV FCF")
-    ax.barh(["VAN"], [pv_tv], left=[pv_fcf], label="PV TV")
-    ax.barh(["VAN"], [-capex0], left=[pv_fcf + pv_tv], label="CAPEX₀")
-    ax.axvline(0, linewidth=0.8)
-    ax.set_xlabel("Gs.")
-    ax.legend(fontsize=6, loc="lower right", frameon=False)
-    ax.tick_params(axis='both', labelsize=7)
-    fig.tight_layout()
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", transparent=True, bbox_inches="tight")
-    plt.close(fig)
-    buf.seek(0)
-    return buf
-
-def _mpl_fcf_bars(fcfs):
-    fig, ax = plt.subplots(figsize=(4.0, 2.1), dpi=200)
-    xs = np.arange(1, len(fcfs) + 1)
-    ax.bar(xs, fcfs)
-    ax.set_xlabel("Año")
-    ax.set_ylabel("FCF (Gs.)")
-    ax.set_xticks(xs)
-    ax.tick_params(axis='both', labelsize=7)
-    fig.tight_layout()
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", transparent=True, bbox_inches="tight")
-    plt.close(fig)
-    buf.seek(0)
-    return buf
-
-def _mpl_hist(npv_vals, p5, p50, p95):
-    fig, ax = plt.subplots(figsize=(4.0, 2.1), dpi=200)
-    ax.hist(npv_vals, bins=35)
-    for v, ls in [(p5, "--"), (p50, "-"), (p95, "--")]:
-        ax.axvline(v, linestyle=ls, linewidth=1.2)
-    ax.set_xlabel("VAN (Gs.)")
-    ax.set_ylabel("Frecuencia")
-    ax.tick_params(axis='both', labelsize=7)
-    fig.tight_layout()
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", transparent=True, bbox_inches="tight")
-    plt.close(fig)
-    buf.seek(0)
-    return buf
-
-def generate_onepager_pdf(data: dict) -> bytes:
-    if not (REPORTLAB_OK and MATPLOTLIB_OK):
-        raise RuntimeError("PDF requiere reportlab + matplotlib instalados.")
-
-    buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=A4)
-    W, H = A4
-
-    margin = 1.4 * cm
-    x0, y0 = margin, H - margin
-
-    # Header
-    c.setFont("Helvetica-Bold", 12.5)
-    c.drawString(x0, y0, "ONE-PAGER EJECUTIVO — EVALUACIÓN FINANCIERA (PYG)")
-    c.setFont("Helvetica", 9.2)
-    c.drawString(x0, y0 - 14, "Universidad San Ignacio de Loyola (USIL) — MBA — Proyectos de Inversión / Valuation")
-    c.drawRightString(W - margin, y0, f"Fecha: {date.today().isoformat()}")
-    c.drawString(x0, y0 - 28, f"Proyecto: {data['project']}  |  Responsable: {data['responsible']}")
-
-    # KPI row
-    y = y0 - 50
-    c.setStrokeColorRGB(0.85, 0.85, 0.85)
-    c.setLineWidth(0.6)
-    c.line(margin, y, W - margin, y)
-
-    y -= 18
-    c.setFont("Helvetica-Bold", 10.5)
-    c.drawString(x0, y, f"DICTAMEN: {data['verdict']}")
-    c.setFont("Helvetica", 9.5)
-    c.drawString(x0 + 115, y, data["rationale"])
-
-    y -= 18
-    c.setFont("Helvetica-Bold", 9.8)
-    c.drawString(x0, y, "KPIs (determinístico)")
-    c.setFont("Helvetica", 9.2)
-    y -= 14
-    c.drawString(x0, y, f"• VAN (base): {fmt_pyg(data['npv_base'])}")
-    y -= 12
-    c.drawString(x0, y, f"• TIR (base): {fmt_pct(data['irr_base']) if data['irr_base'] is not None else 'N/A'}")
-    y -= 12
-    c.drawString(x0, y, f"• Payback simple: {data['pb_simple']:.2f} años" if data['pb_simple'] is not None else "• Payback simple: N/A")
-    y -= 12
-    c.drawString(x0, y, f"• Payback descont.: {data['pb_disc']:.2f} años" if data['pb_disc'] is not None else "• Payback descont.: N/A")
-
-    # Monte Carlo small block
-    y_mc = y0 - 82
-    x_mc = W * 0.52
-    c.setFont("Helvetica-Bold", 9.8)
-    c.drawString(x_mc, y_mc, "Monte Carlo — lectura ejecutiva")
-    c.setFont("Helvetica", 9.2)
-    y_mc -= 14
-    c.drawString(x_mc, y_mc, f"Simulaciones: {data['sims']:,} | válidas: {data['valid_rate']:.1%} | P(VAN<0): {data['prob_neg']:.1%}")
-    y_mc -= 12
-    c.drawString(x_mc, y_mc, f"P5/P50/P95: {fmt_pyg(data['p5'])} / {fmt_pyg(data['p50'])} / {fmt_pyg(data['p95'])}")
-    y_mc -= 12
-    c.drawString(x_mc, y_mc, f"Media: {fmt_pyg(data['mean'])} | σ: {fmt_pyg(data['std'])} | CVaR5: {fmt_pyg(data['cvar5'])}")
-
-    # Assumptions + flows + checklist
-    y2 = y - 18
-    c.setFont("Helvetica-Bold", 9.8)
-    c.drawString(x0, y2, "Supuestos clave")
-    c.setFont("Helvetica", 9.2)
-    y2 -= 14
-    c.drawString(x0, y2, f"• Horizonte: {data['n_years']} años + perpetuidad")
-    y2 -= 12
-    c.drawString(x0, y2, f"• g explícito: {data['g_exp']*100:.2f}% | g∞: {data['g_inf']*100:.2f}%")
-    y2 -= 12
-    c.drawString(x0, y2, f"• WACC: {data['wacc']*100:.2f}% (Ke {data['ke']*100:.2f}% | Kd {data['kd']*100:.2f}%)")
-    y2 -= 12
-    c.drawString(x0, y2, f"• CAPEX₀: {fmt_pyg(data['capex0'])} | FCF1: {fmt_pyg(data['fcf1'])}")
-
-    y2 -= 16
-    c.setFont("Helvetica-Bold", 9.8)
-    c.drawString(x0, y2, "Flujos proyectados (FCF) — ciclo 1..N + TV (separado)")
-    c.setFont("Helvetica", 9.1)
-    y2 -= 14
-    for i, v in enumerate(data["fcf_years"], start=1):
-        if y2 < 9 * cm:  # avoid overflow; keep one pager
-            break
-        c.drawString(x0, y2, f"• Año {i}: {fmt_pyg(v)}")
-        y2 -= 11
-    c.drawString(x0, y2, f"• TV (en año {data['n_years']}): {fmt_pyg(data['tv'])}")
-    y2 -= 16
-
-    c.setFont("Helvetica-Bold", 9.8)
-    c.drawString(x0, y2, "Checklist Comité (automático)")
-    c.setFont("Helvetica", 9.2)
-    y2 -= 14
-    for line in data["checklist_lines"]:
-        c.drawString(x0, y2, f"• {line}")
-        y2 -= 11
-
-    # Charts block
-    # Place charts on bottom half: value bridge + hist + fcf bars
-    chart_top = 9.2 * cm
-    # Value bridge
-    vb = _mpl_value_bridge(data["pv_fcf"], data["pv_tv"], data["capex0"])
-    c.drawImage(ImageReader(vb), x0, chart_top, width=8.6*cm, height=3.7*cm, mask="auto")
-    c.setFont("Helvetica", 8.5)
-    c.drawString(x0, chart_top - 10, "Estructura del valor (PV FCF + PV TV − CAPEX₀)")
-
-    # FCF bars
-    fb = _mpl_fcf_bars(data["fcf_years"])
-    c.drawImage(ImageReader(fb), x0, chart_top - 5.0*cm, width=8.6*cm, height=4.0*cm, mask="auto")
-    c.setFont("Helvetica", 8.5)
-    c.drawString(x0, chart_top - 5.0*cm - 10, "FCF por año (ciclo 1..N)")
-
-    # Histogram
-    hb = _mpl_hist(data["npv_valid"], data["p5"], data["p50"], data["p95"])
-    c.drawImage(ImageReader(hb), x_mc, chart_top - 0.2*cm, width=8.6*cm, height=7.6*cm, mask="auto")
-    c.setFont("Helvetica", 8.5)
-    c.drawString(x_mc, chart_top - 10, "Distribución del VAN (Monte Carlo) con P5/P50/P95")
-
-    # Footer
-    c.setFont("Helvetica", 8.2)
-    c.setFillColor(colors.grey)
-    c.drawString(x0, margin * 0.9, "Uso académico (MBA). Resultados dependen de supuestos y evidencia; no sustituyen due diligence.")
-    c.drawRightString(W - margin, margin * 0.9, "ValuationSuite USIL (PYG)")
-    c.save()
-
-    buf.seek(0)
-    return buf.read()
+    return npv_s, g_s, w_s, capex_s, mult_s, idx
 
 
-# -----------------------------
-# Sidebar Inputs
-# -----------------------------
+# ============================================================
+# Sidebar inputs
+# ============================================================
 st.sidebar.header("🧩 Identificación")
-project = st.sidebar.text_input("Proyecto", value="Proyecto")
-responsible = st.sidebar.text_input("Responsable", value="Docente: Jorge Rojas")
+project = st.sidebar.text_input("Proyecto", "Proyecto")
+responsible = st.sidebar.text_input("Responsable", "Docente: Jorge Rojas")
 
 st.sidebar.divider()
 st.sidebar.header("0) Inversión inicial")
-capex0 = st.sidebar.number_input("CAPEX Año 0 (inversión inicial)", min_value=1.0, value=3_500_000_000.0, step=50_000_000.0)
+capex0 = st.sidebar.number_input("CAPEX Año 0 (inversión inicial)", value=3_500_000_000.0, step=50_000_000.0, min_value=1.0)
 
 st.sidebar.divider()
 st.sidebar.header("1) CAPM / WACC (Nominal, D/E contable)")
-rf = st.sidebar.number_input("Rf (%)", value=6.0, step=0.1) / 100
-erp = st.sidebar.number_input("ERP (%)", value=5.5, step=0.1) / 100
-crp = st.sidebar.number_input("CRP (%)", value=2.0, step=0.1) / 100
+rf = st.sidebar.number_input("Rf (%)", value=4.5, step=0.1) / 100.0
+erp = st.sidebar.number_input("ERP (%)", value=5.5, step=0.1) / 100.0
+crp = st.sidebar.number_input("CRP (%)", value=2.0, step=0.1) / 100.0
 beta_u = st.sidebar.number_input("βU (desapalancada)", value=0.90, step=0.05)
-tax_rate = st.sidebar.number_input("Impuesto (T) (%)", value=10.0, step=0.5) / 100
+tax_rate = st.sidebar.number_input("Impuesto (T) (%)", value=10.0, step=0.5) / 100.0
 
 st.sidebar.divider()
 st.sidebar.header("2) Estructura de capital (valores contables)")
-debt = st.sidebar.number_input("Deuda (D)", min_value=0.0, value=2_000_000_000.0, step=50_000_000.0)
-equity = st.sidebar.number_input("Capital propio (E)", min_value=1.0, value=3_000_000_000.0, step=50_000_000.0)
-kd = st.sidebar.number_input("Costo de deuda Kd (%)", value=7.0, step=0.1) / 100
+debt = st.sidebar.number_input("Deuda (D)", value=2_000_000_000.0, step=50_000_000.0, min_value=0.0)
+equity = st.sidebar.number_input("Capital propio (E)", value=3_000_000_000.0, step=50_000_000.0, min_value=1.0)
+kd = st.sidebar.number_input("Costo de deuda Kd (%)", value=7.0, step=0.25) / 100.0
 
+# 3A) Puente contable → FCF1
 st.sidebar.divider()
 st.sidebar.header("3A) Contable Año 1 (para calcular FCF Año 1)")
-sales_y1 = st.sidebar.number_input("Ventas Año 1", min_value=0.0, value=6_000_000_000.0, step=50_000_000.0)
-var_cost_y1 = st.sidebar.number_input("Costos variables Año 1", min_value=0.0, value=3_000_000_000.0, step=50_000_000.0)
-fixed_cost_y1 = st.sidebar.number_input("Costos fijos Año 1", min_value=0.0, value=1_500_000_000.0, step=50_000_000.0)
-dep_y1 = st.sidebar.number_input("Depreciación Año 1 (no caja)", min_value=0.0, value=250_000_000.0, step=10_000_000.0)
-capex_y1 = st.sidebar.number_input("CAPEX Año 1 (mantenimiento/crecimiento)", min_value=0.0, value=250_000_000.0, step=10_000_000.0)
+sales_y1 = st.sidebar.number_input("Ventas Año 1", value=10_000_000_000.0, step=100_000_000.0, min_value=0.0)
+cvar_y1 = st.sidebar.number_input("Costos variables Año 1", value=6_000_000_000.0, step=100_000_000.0, min_value=0.0)
+cfix_y1 = st.sidebar.number_input("Costos fijos Año 1", value=2_750_000_000.0, step=50_000_000.0, min_value=0.0)
+dep_y1 = st.sidebar.number_input("Depreciación Año 1 (no caja)", value=1_500_000_000.0, step=50_000_000.0, min_value=0.0)
+capex_y1 = st.sidebar.number_input("CAPEX Año 1 (mantenimiento/crecimiento)", value=250_000_000.0, step=25_000_000.0, min_value=0.0)
 
 st.sidebar.markdown("**Δ Capital de trabajo (Año 1) — componentes (simplificado)**")
-d_ar = st.sidebar.number_input("Δ Cuentas por cobrar (AR)", value=120_000_000.0, step=10_000_000.0)
-d_inv = st.sidebar.number_input("Δ Inventarios (INV)", value=60_000_000.0, step=10_000_000.0)
-d_ap = st.sidebar.number_input("Δ Cuentas por pagar (AP)", value=40_000_000.0, step=10_000_000.0)
+d_ar = st.sidebar.number_input("Δ Cuentas por cobrar (AR)", value=90_000_000.0, step=10_000_000.0)
+d_inv = st.sidebar.number_input("Δ Inventarios (INV)", value=80_000_000.0, step=10_000_000.0)
+d_ap = st.sidebar.number_input("Δ Cuentas por pagar (AP)", value=30_000_000.0, step=10_000_000.0)
 
+# 3B) Proyección explícita + perpetuidad
 st.sidebar.divider()
 st.sidebar.header("3B) Flujos (Ciclo 1..N) + g perpetuidad")
-n_years = int(st.sidebar.slider("Años de proyección (N)", min_value=3, max_value=10, value=5, step=1))
-g_exp = st.sidebar.number_input("g explícito (%) (crecimiento ciclo 1..N)", value=5.0, step=0.25) / 100
-g_inf = st.sidebar.number_input("g a perpetuidad (%)", value=2.0, step=0.1) / 100
-
-st.sidebar.divider()
-st.sidebar.header("4) Monte Carlo (incertidumbre razonable)")
-sims = int(st.sidebar.slider("Simulaciones", min_value=5000, max_value=60000, value=DEFAULT_SIMS, step=1000))
-st.sidebar.caption("Se asume RNG interno (sin semilla expuesta).")
-
-st.sidebar.markdown("**Rangos triangulares (mín=adverso, base=más probable, máx=favorable)**")
-g_min = st.sidebar.number_input("g mín (%)", value=max(-20.0, (g_exp*100) - 4.0), step=0.25) / 100
-g_mode = st.sidebar.number_input("g base (%)", value=g_exp*100, step=0.25) / 100
-g_max = st.sidebar.number_input("g máx (%)", value=(g_exp*100) + 4.0, step=0.25) / 100
-
-wacc_pm = st.sidebar.number_input("WACC rango ± (%)", value=15.0, step=1.0) / 100
-
-capex_min = st.sidebar.number_input("CAPEX mín (favorable)", min_value=0.0, value=capex0 * 0.85, step=10_000_000.0)
-capex_mode = st.sidebar.number_input("CAPEX base", min_value=0.0, value=capex0, step=10_000_000.0)
-capex_max = st.sidebar.number_input("CAPEX máx (adverso)", min_value=0.0, value=capex0 * 1.20, step=10_000_000.0)
-
-fcf_mult_min = st.sidebar.number_input("Shock FCF1 mín (adverso)", value=0.85, step=0.01)
-fcf_mult_mode = st.sidebar.number_input("Shock FCF1 base", value=1.00, step=0.01)
-fcf_mult_max = st.sidebar.number_input("Shock FCF1 máx (favorable)", value=1.15, step=0.01)
-
-
-# -----------------------------
-# Core calculations
-# -----------------------------
-D = safe_float(debt, 0.0)
-E = safe_float(equity, 1.0)
-V = max(D + E, 1.0)
-
-beta_l = beta_u * (1 + (1 - tax_rate) * (D / E))
-ke = rf + beta_l * erp + crp
-wacc = (E / V) * ke + (D / V) * kd * (1 - tax_rate)
-
-# Accounting to FCF
-ebit = sales_y1 - var_cost_y1 - fixed_cost_y1 - dep_y1
-nopat = ebit * (1 - tax_rate)
-d_wc = d_ar + d_inv - d_ap
-fcf1 = nopat + dep_y1 - capex_y1 - d_wc
-
-# Flows + TV
-years = np.arange(1, n_years + 1)
-fcf_years = np.array([fcf1 * ((1 + g_exp) ** (t - 1)) for t in years], dtype=float)
-
-valid_tv = wacc > (g_inf + MIN_SPREAD)
-tv = np.nan
-npv_base = np.nan
-pv_fcf = np.nan
-pv_tv = np.nan
-
-if valid_tv:
-    tv = (fcf_years[-1] * (1 + g_inf)) / (wacc - g_inf)
-    disc = (1 + wacc) ** years
-    pv_fcf = float(np.sum(fcf_years / disc))
-    pv_tv = float(tv / ((1 + wacc) ** n_years))
-    npv_base = pv_fcf + pv_tv - capex0
-
-cashflows = [-capex0] + list(fcf_years)
-cashflows_tv = cashflows[:-1] + [cashflows[-1] + (tv if np.isfinite(tv) else 0.0)]
-irr_base = safe_irr(cashflows_tv) if valid_tv else None
-
-pb_simple = payback_simple(cashflows_tv)
-pb_disc = payback_discounted(cashflows_tv, wacc) if valid_tv else None
+n_years = int(st.sidebar.slider("Años de proyección (N)", min_value=3, max_value=10, value=5))
+g_exp = st.sidebar.number_input("g explícito (%) (crecimiento ciclo 1..N)", value=5.0, step=0.25) / 100.0
+g_inf = st.sidebar.number_input("g a perpetuidad (%)", value=2.0, step=0.10) / 100.0
 
 # Monte Carlo
-npv_sims, valid_mask = run_monte_carlo(
+st.sidebar.divider()
+st.sidebar.header("4) Monte Carlo (incertidumbre razonable)")
+sims = int(st.sidebar.slider("Simulaciones", min_value=5000, max_value=60000, value=15000, step=1000))
+st.sidebar.caption("Se asume RNG interno (sin semilla expuesta). Rangos triangulares.")
+
+g_min = st.sidebar.number_input("g mín (%)", value=2.0, step=0.25) / 100.0
+g_mode = st.sidebar.number_input("g base (%)", value=5.0, step=0.25) / 100.0
+g_max = st.sidebar.number_input("g máx (%)", value=8.0, step=0.25) / 100.0
+
+wacc_range = st.sidebar.number_input("WACC rango ± (%)", value=2.0, step=0.25) / 100.0
+
+capex_min = st.sidebar.number_input("CAPEX mín (favorable)", value=max(capex0*0.90, 1.0), step=50_000_000.0)
+capex_mode = st.sidebar.number_input("CAPEX base", value=capex0, step=50_000_000.0)
+capex_max = st.sidebar.number_input("CAPEX máx (adverso)", value=capex0*1.10, step=50_000_000.0)
+
+mult_min = st.sidebar.number_input("Shock FCF1 mín (adverso)", value=0.85, step=0.01)
+mult_mode = st.sidebar.number_input("Shock FCF1 base", value=1.00, step=0.01)
+mult_max = st.sidebar.number_input("Shock FCF1 máx (favorable)", value=1.15, step=0.01)
+
+
+# ============================================================
+# Cálculos base: WACC, FCF1, DCF
+# ============================================================
+# D/E contable
+D = float(debt)
+E = float(equity)
+V = max(D + E, 1e-9)
+wD = D / V
+wE = E / V
+
+# Beta apalancada por D/E contable
+beta_l = beta_u * (1.0 + (1.0 - tax_rate) * (D / max(E, 1e-9)))
+
+ke = rf + beta_l * erp + crp
+wacc = wE * ke + wD * kd * (1.0 - tax_rate)
+
+# Puente contable a FCF1
+ebit = sales_y1 - cvar_y1 - cfix_y1 - dep_y1
+nopat = ebit * (1.0 - tax_rate)
+delta_wc = (d_ar + d_inv - d_ap)
+
+fcf_y1 = nopat + dep_y1 - capex_y1 - delta_wc  # FCF Año 1 calculado
+
+# FCF ciclo 1..N
+years = np.arange(1, n_years + 1)
+fcf_series = fcf_y1 * (1.0 + g_exp) ** (years - 1)
+
+# TV y VAN determinístico
+valid_tv = (wacc > (g_inf + MIN_SPREAD))
+if valid_tv:
+    tv = (fcf_series[-1] * (1.0 + g_inf)) / (wacc - g_inf)
+else:
+    tv = np.nan
+
+pv_fcf = np.sum(fcf_series / (1.0 + wacc) ** years) if valid_tv else np.nan
+pv_tv = (tv / (1.0 + wacc) ** n_years) if valid_tv else np.nan
+npv_base = (pv_fcf + pv_tv - capex0) if valid_tv else np.nan
+
+# Cashflows para IRR (CAPEX0 + FCFs + TV)
+cashflows = [-capex0] + list(fcf_series)
+cashflows[-1] = cashflows[-1] + (tv if np.isfinite(tv) else 0.0)
+irr_base = safe_irr(cashflows)
+
+pb_simple = payback_simple(capex0, fcf_series)
+pb_disc = payback_discounted(capex0, fcf_series, wacc) if np.isfinite(wacc) else None
+
+
+# ============================================================
+# Monte Carlo
+# ============================================================
+w_min = max(wacc - wacc_range, 0.0)
+w_mode = max(wacc, 0.0)
+w_max = max(wacc + wacc_range, 0.0)
+
+npv_s, g_s, w_s, capex_s, mult_s, valid_idx = run_monte_carlo(
     sims=sims,
-    fcf1=float(fcf1),
-    n_years=int(n_years),
+    fcf_y1=float(fcf_y1),
+    n_years=n_years,
     g_inf=float(g_inf),
-    wacc_base=float(wacc),
-    wacc_pm=float(wacc_pm),
-    g_min=float(g_min),
-    g_mode=float(g_mode),
-    g_max=float(g_max),
-    capex_min=float(capex_min),
-    capex_mode=float(capex_mode),
-    capex_max=float(capex_max),
-    fcf_mult_min=float(fcf_mult_min),
-    fcf_mult_mode=float(fcf_mult_mode),
-    fcf_mult_max=float(fcf_mult_max),
+    g_min=float(g_min), g_mode=float(g_mode), g_max=float(g_max),
+    w_min=float(w_min), w_mode=float(w_mode), w_max=float(w_max),
+    capex_min=float(capex_min), capex_mode=float(capex_mode), capex_max=float(capex_max),
+    fcf_mult_min=float(mult_min), fcf_mult_mode=float(mult_mode), fcf_mult_max=float(mult_max),
 )
 
-npv_valid = npv_sims[np.isfinite(npv_sims)]
-valid_rate = float(np.mean(np.isfinite(npv_sims))) if npv_sims.size else 0.0
-
+valid_rate = float(np.isfinite(npv_s).mean())
+npv_valid = npv_s[np.isfinite(npv_s)]
 if npv_valid.size:
+    prob_neg = float((npv_valid < 0).mean())
     p5, p50, p95 = np.percentile(npv_valid, [5, 50, 95])
     mean = float(np.mean(npv_valid))
-    std = float(np.std(npv_valid, ddof=1)) if npv_valid.size > 1 else 0.0
-    prob_neg = float(np.mean(npv_valid < 0))
-    var5 = float(p5)
-    cvar5 = float(np.mean(npv_valid[npv_valid <= p5])) if np.any(npv_valid <= p5) else float(p5)
+    std = float(np.std(npv_valid))
+    var5 = float(np.percentile(npv_valid, 5))
+    cvar5 = float(np.mean(npv_valid[npv_valid <= var5])) if np.any(npv_valid <= var5) else var5
 else:
-    p5 = p50 = p95 = mean = std = prob_neg = var5 = cvar5 = np.nan
+    prob_neg = float("nan")
+    p5 = p50 = p95 = mean = std = cvar5 = float("nan")
 
-# Committee checklist (automatic defaults)
-van_ok = bool(np.isfinite(npv_base) and npv_base > 0)
-pneg_ok = bool(np.isfinite(prob_neg) and prob_neg <= 0.20)
-p50_ok = bool(np.isfinite(p50) and p50 > 0)
-p5_ok = bool(np.isfinite(p5) and p5 > 0)
 
-verdict, verdict_class = verdict_from_checks(van_ok, pneg_ok, p50_ok, p5_ok)
+# ============================================================
+# Dictamen + narrativa
+# ============================================================
+if not np.isfinite(npv_base):
+    verdict = "OBSERVADO"
+    checks = [("Consistencia TV (WACC > g∞ + spread)", False)]
+    rationale = "La consistencia del valor terminal no se cumple (WACC debe ser mayor que g∞ + spread). Ajustar supuestos."
+else:
+    verdict, checks = committee_check(float(npv_base), float(prob_neg), float(p50), float(p5))
+    if verdict == "APROBADO":
+        rationale = ("El proyecto satisface criterios conservadores: creación de valor y downside controlado "
+                     "bajo incertidumbre razonable.")
+    elif verdict == "RECHAZADO":
+        rationale = ("El proyecto no cumple criterios mínimos. Se recomienda rediseñar supuestos clave o estructura "
+                     "de inversión antes de avanzar.")
+    else:
+        rationale = ("El proyecto muestra potencial, pero requiere reforzar supuestos críticos y mitigaciones "
+                     "antes de aprobación final.")
 
-rationale_map = {
-    "ok": "El proyecto cumple criterios conservadores: creación de valor y downside controlado bajo incertidumbre razonable.",
-    "warn": "El caso es prometedor, pero requiere reforzar supuestos/mitigaciones para reducir downside antes de aprobar.",
-    "bad": "El perfil riesgo–retorno no cumple mínimos; se recomienda rediseño del caso o mitigaciones fuertes.",
-}
-rationale = rationale_map[verdict_class]
 
-checklist_lines = [
-    f"{'✅' if van_ok else '⛔'} VAN base > 0",
-    f"{'✅' if pneg_ok else '⛔'} P(VAN<0) ≤ 20%",
-    f"{'✅' if p50_ok else '⛔'} P50(VAN) > 0",
-    f"{'✅' if p5_ok else '⛔'} P5(VAN) > 0",
-]
+# ============================================================
+# Dashboard (One‑Pager visual)
+# ============================================================
+top = st.container()
+with top:
+    left, right = st.columns([0.75, 0.25], gap="large")
+    with left:
+        st.markdown(
+            f"""
+            <div class="card">
+              <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:14px;">
+                <div>
+                  <div style="font-size:1.05rem; font-weight:800; letter-spacing:.02em;">ONE‑PAGER EJECUTIVO — EVALUACIÓN FINANCIERA (PYG)</div>
+                  <div class="small">Universidad San Ignacio de Loyola (USIL) — MBA — Proyectos de Inversión / Valuation</div>
+                  <div class="small">Proyecto: <b>{project}</b> &nbsp;|&nbsp; Responsable: <b>{responsible}</b></div>
+                </div>
+                <div class="small" style="text-align:right;">Fecha: <b>{date.today().isoformat()}</b></div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with right:
+        pill_class = "good" if verdict=="APROBADO" else ("bad" if verdict=="RECHAZADO" else "warn")
+        st.markdown(
+            f"""
+            <div class="card" style="text-align:center;">
+              <div class="small">Dictamen</div>
+              <div class="pill {pill_class}" style="font-size:1.05rem;">{verdict}</div>
+              <div class="small" style="margin-top:8px;">Checklist automático + Monte Carlo</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-# -----------------------------
-# Header
-# -----------------------------
-st.markdown("## ONE-PAGER EJECUTIVO — EVALUACIÓN FINANCIERA (PYG)")
-st.markdown(
-    f"<div class='small-muted'>Universidad San Ignacio de Loyola (USIL) — MBA — Proyectos de Inversión / Valuation</div>",
-    unsafe_allow_html=True,
-)
+st.markdown("")
 
-# Keep dates clean (no overlap): explicit 2-col layout
-h1, h2 = st.columns([0.70, 0.30])
-with h1:
-    st.markdown(f"<div class='small-muted'>Proyecto: <b>{project}</b> &nbsp;|&nbsp; Responsable: <b>{responsible}</b></div>", unsafe_allow_html=True)
-with h2:
-    st.markdown(f"<div class='small-muted' style='text-align:right;'>Fecha: <b>{date.today().isoformat()}</b></div>", unsafe_allow_html=True)
+c1, c2, c3, c4, c5, c6 = st.columns(6, gap="medium")
+c1.metric("VAN (base)", fmt_pyg(npv_base) if np.isfinite(npv_base) else "—", "Determinístico")
+c2.metric("TIR (base)", fmt_pct(irr_base) if irr_base is not None else "N/A", "Determinístico")
+c3.metric("Payback", f"{pb_simple:.2f} años" if pb_simple is not None else "N/A", "Simple")
+c4.metric("Payback (desc.)", f"{pb_disc:.2f} años" if pb_disc is not None else "N/A", "Descontado")
+c5.metric("P(VAN<0)", f"{prob_neg*100:.1f}%" if np.isfinite(prob_neg) else "—", "Monte Carlo")
+c6.metric("P50 (VAN)", fmt_pyg(p50) if np.isfinite(p50) else "—", "Monte Carlo")
 
-st.markdown("<div class='hr'></div>", unsafe_allow_html=True)
+st.markdown("")
 
-# -----------------------------
-# KPI cards
-# -----------------------------
-k1, k2, k3, k4, k5, k6 = st.columns(6)
+colA, colB = st.columns([0.58, 0.42], gap="large")
 
-def card(col, title, big, sub):
-    col.markdown(
-        f"""
-<div class="card">
-  <h4>{title}</h4>
-  <div class="big">{big}</div>
-  <div class="sub">{sub}</div>
-</div>
-""",
-        unsafe_allow_html=True,
+with colA:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown("### Decisión & supuestos")
+    st.write(rationale)
+    st.markdown("**Supuestos clave**")
+    st.write(
+        f"- Horizonte: {n_years} años + perpetuidad\n"
+        f"- g explícito: {fmt_pct(g_exp)} | g∞: {fmt_pct(g_inf)}\n"
+        f"- WACC: {fmt_pct(wacc)} (Ke {fmt_pct(ke)} | Kd {fmt_pct(kd)})\n"
+        f"- CAPEX₀: {fmt_pyg(capex0)}\n"
+        f"- FCF Año 1 (calculado): {fmt_pyg(fcf_y1)}"
     )
+    st.markdown("**Checklist Comité (automático)**")
+    for label, ok in checks:
+        st.write(("✅ " if ok else "❌ ") + label)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-card(k1, "VAN (base)", fmt_pyg(npv_base) if np.isfinite(npv_base) else "—", "Determinístico")
-card(k2, "TIR (base)", fmt_pct(irr_base), "Determinístico")
-card(k3, "Payback", f"{pb_simple:.2f} a" if pb_simple is not None else "—", "Simple")
-card(k4, "Payback (desc.)", f"{pb_disc:.2f} a" if pb_disc is not None else "—", "Descontado")
-card(k5, "P(VAN<0)", f"{prob_neg*100:.1f}%" if np.isfinite(prob_neg) else "—", "Monte Carlo")
-card(k6, "P50 (VAN)", fmt_pyg(p50) if np.isfinite(p50) else "—", "Monte Carlo")
+with colB:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown("### Estructura del valor")
+    st.markdown("<div class='small'>VAN = PV(FCF ciclo 1..N) + PV(TV) − CAPEX₀. TV se reporta separado.</div>", unsafe_allow_html=True)
 
-st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-
-# -----------------------------
-# Main 2x2 grid
-# -----------------------------
-c_left, c_right = st.columns([0.52, 0.48])
-
-# Decision & assumptions
-with c_left:
-    pill = f"<span class='pill {verdict_class}'>DICTAMEN: <b>{verdict}</b></span>"
-    st.markdown(
-        f"""
-<div class="card">
-  <h3 style="margin:0 0 8px 0; font-size:1.05rem;">Decisión & supuestos</h3>
-  {pill}
-  <div class="small-muted" style="margin-top:8px;">{rationale}</div>
-  <div class="hr"></div>
-  <div class="small-muted">
-    • Horizonte: <b>{n_years} años</b> + perpetuidad<br/>
-    • g explícito: <b>{g_exp*100:.2f}%</b> &nbsp;|&nbsp; g∞: <b>{g_inf*100:.2f}%</b><br/>
-    • WACC: <b>{wacc*100:.2f}%</b> (Ke {ke*100:.2f}% | Kd {kd*100:.2f}%)<br/>
-    • CAPEX₀: <b>{fmt_pyg(capex0)}</b> &nbsp;|&nbsp; FCF₁ (calculado): <b>{fmt_pyg(fcf1)}</b><br/>
-    • Simulaciones: <b>{sims:,}</b> (válidas: {valid_rate:.1%})
-  </div>
-  <div class="hr"></div>
-  <div class="small-muted"><b>Checklist Comité (automático)</b><br/>
-    {checklist_lines[0]}<br/>
-    {checklist_lines[1]}<br/>
-    {checklist_lines[2]}<br/>
-    {checklist_lines[3]}
-  </div>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-
-# Value structure chart
-with c_right:
-    st.markdown(
-        """
-<div class="card">
-  <h3 style="margin:0 0 6px 0; font-size:1.05rem;">Estructura del valor</h3>
-  <div class="small-muted">VAN = PV(FCF ciclo 1..N) + PV(TV) − CAPEX₀ (TV separado)</div>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-
-    if np.isfinite(pv_fcf) and np.isfinite(pv_tv):
-        fig = go.Figure()
-        fig.add_trace(go.Bar(name="PV FCF", y=["VAN"], x=[pv_fcf], orientation="h"))
-        fig.add_trace(go.Bar(name="PV TV", y=["VAN"], x=[pv_tv], orientation="h"))
-        fig.add_trace(go.Bar(name="CAPEX₀", y=["VAN"], x=[-capex0], orientation="h"))
-        fig.update_layout(
-            barmode="relative",
-            height=240,
+    if np.isfinite(npv_base):
+        # gráfico tipo fuente/puente (horizontal)
+        df_value = {
+            "Componente": ["PV FCF", "PV TV", "CAPEX₀"],
+            "Monto": [pv_fcf, pv_tv, -capex0],
+        }
+        fig_value = px.bar(
+            x=list(df_value["Monto"]),
+            y=list(df_value["Componente"]),
+            orientation="h",
+            labels={"x": "Gs.", "y": ""},
+        )
+        fig_value.update_layout(
+            height=220,
             margin=dict(l=10, r=10, t=10, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="rgba(255,255,255,.85)"),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+            showlegend=False,
         )
-        st.plotly_chart(fig, use_container_width=True)
-        st.markdown(
-            f"<div class='small-muted' style='text-align:right; margin-top:-6px;'><b>VAN (base): {fmt_pyg(npv_base)}</b></div>",
-            unsafe_allow_html=True,
-        )
+        fig_value.update_xaxes(showgrid=True, gridcolor="rgba(255,255,255,.07)")
+        fig_value.update_yaxes(showgrid=False)
+
+        st.plotly_chart(fig_value, use_container_width=True, config={"displayModeBar": False})
+        st.markdown(f"**VAN (base): {fmt_pyg(npv_base)}**")
     else:
-        st.warning("WACC debe ser mayor que g∞ + 0.5% para calcular TV y VAN. Ajusta supuestos.")
+        st.warning("No se puede calcular TV: WACC debe ser mayor que g∞ + spread.")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+st.markdown("")
+colC, colD = st.columns([0.52, 0.48], gap="large")
 
-# Bottom charts row: FCF + Monte Carlo hist
-b1, b2 = st.columns([0.52, 0.48])
-
-with b1:
-    st.markdown(
-        """
-<div class="card">
-  <h3 style="margin:0 0 6px 0; font-size:1.05rem;">Flujos proyectados (ciclo 1..N) + TV</h3>
-  <div class="small-muted">FCF por ciclo. El valor terminal (TV) se muestra separado.</div>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-    fig2 = go.Figure()
-    fig2.add_trace(go.Bar(x=[str(i) for i in years], y=fcf_years, name="FCF"))
-    fig2.update_layout(
-        height=270,
+with colC:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown("### Flujos proyectados (ciclo 1..N) + TV")
+    st.markdown("<div class='small'>FCF por ciclo. El valor terminal (TV) se muestra separado.</div>", unsafe_allow_html=True)
+    df_fcf = {"Año": [str(i) for i in years], "FCF": [float(x) for x in fcf_series]}
+    fig_fcf = px.bar(df_fcf, x="Año", y="FCF")
+    fig_fcf.update_layout(
+        height=300,
         margin=dict(l=10, r=10, t=10, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="rgba(255,255,255,.85)"),
+        showlegend=False,
     )
-    st.plotly_chart(fig2, use_container_width=True)
+    fig_fcf.update_yaxes(showgrid=True, gridcolor="rgba(255,255,255,.07)")
+    st.plotly_chart(fig_fcf, use_container_width=True, config={"displayModeBar": False})
     if np.isfinite(tv):
-        st.markdown(f"<div class='small-muted'>TV (en ciclo {n_years}): <b>{fmt_pyg(tv)}</b></div>", unsafe_allow_html=True)
+        st.caption(f"TV (en ciclo {n_years}): {fmt_pyg(tv)}")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-with b2:
-    st.markdown(
-        """
-<div class="card">
-  <h3 style="margin:0 0 6px 0; font-size:1.05rem;">Riesgo (Monte Carlo) — distribución del VAN</h3>
-  <div class="small-muted">Histograma con P5/P50/P95. Lectura ejecutiva ampliada debajo.</div>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
+with colD:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown("### Riesgo (Monte Carlo) — distribución del VAN")
     if npv_valid.size:
-        fig3 = go.Figure()
-        fig3.add_trace(go.Histogram(x=npv_valid, nbinsx=40, name="VAN"))
-        for v, nm in [(p5, "P5"), (p50, "P50"), (p95, "P95")]:
-            fig3.add_vline(x=v, line_dash="dash" if nm != "P50" else "solid", line_width=2)
-        fig3.update_layout(
-            height=270,
+        st.markdown(
+            f"<div class='small'>Simulaciones: <b>{sims:,}</b> | válidas: <b>{valid_rate*100:.1f}%</b> | "
+            f"P(VAN&lt;0): <b>{prob_neg*100:.1f}%</b></div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"<div class='small'>P5/P50/P95: <b>{fmt_pyg(p5)}</b> / <b>{fmt_pyg(p50)}</b> / <b>{fmt_pyg(p95)}</b> "
+            f"| Media: <b>{fmt_pyg(mean)}</b> | σ: <b>{fmt_pyg(std)}</b> | CVaR5: <b>{fmt_pyg(cvar5)}</b></div>",
+            unsafe_allow_html=True,
+        )
+
+        # Histograma (plotly)
+        df_hist = {"VAN": npv_valid}
+        fig_hist = px.histogram(df_hist, x="VAN", nbins=40)
+        fig_hist.update_layout(
+            height=300,
             margin=dict(l=10, r=10, t=10, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="rgba(255,255,255,.85)"),
             showlegend=False,
         )
-        st.plotly_chart(fig3, use_container_width=True)
+        fig_hist.update_xaxes(showgrid=True, gridcolor="rgba(255,255,255,.07)")
+        fig_hist.update_yaxes(showgrid=True, gridcolor="rgba(255,255,255,.07)")
 
-        # Expanded Monte Carlo explanation (keeps layout stable)
+        # líneas P5/P50/P95
+        for v in [p5, p50, p95]:
+            fig_hist.add_vline(x=float(v), line_width=2, line_dash="dash", line_color="rgba(234,241,255,.65)")
+        st.plotly_chart(fig_hist, use_container_width=True, config={"displayModeBar": False})
+
         st.markdown(
-            f"""
-<div class="small-muted">
-<b>Lectura ejecutiva (Monte Carlo):</b><br/>
-• <b>P(VAN&lt;0)</b> = <b>{prob_neg*100:.1f}%</b>: proporción de escenarios que destruyen valor.<br/>
-• <b>P5</b> = <b>{fmt_pyg(p5)}</b>: “downside plausible” (1 de cada 20 escenarios peores).<br/>
-• <b>P50</b> = <b>{fmt_pyg(p50)}</b>: escenario central (mediana).<br/>
-• <b>P95</b> = <b>{fmt_pyg(p95)}</b>: upside plausible (1 de cada 20 escenarios mejores).<br/>
-• <b>Media</b> = {fmt_pyg(mean)} | <b>σ</b> = {fmt_pyg(std)} | <b>CVaR5</b> = {fmt_pyg(cvar5)} (promedio del 5% peor).<br/>
-</div>
-""",
+            "<div class='small'>Lectura: P5 es un escenario adverso plausible (cola izquierda), "
+            "P50 es el centro, P95 es escenario favorable. CVaR5 aproxima la severidad promedio dentro del 5% peor.</div>",
             unsafe_allow_html=True,
         )
     else:
-        st.warning("No hay simulaciones válidas (revisa WACC vs g∞ y rangos).")
+        st.warning("Monte Carlo no generó resultados válidos (revisar WACC vs g∞, rangos y supuestos).")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+st.markdown("<div class='small' style='text-align:center; margin-top:8px;'>Uso académico (MBA). Resultados dependen de supuestos y evidencia; no sustituyen due diligence. · ValuationSuite USIL (PYG)</div>", unsafe_allow_html=True)
 
-# Accounting bridge (compact but clear)
-st.markdown(
-    """
-<div class="card">
-  <h3 style="margin:0 0 6px 0; font-size:1.05rem;">Puente contable → FCF (Año 1)</h3>
-  <div class="small-muted">Pensado para estudiantes sin fondo contable: EBIT → NOPAT → ajustes no caja → CAPEX → ΔCT.</div>
-</div>
-""",
-    unsafe_allow_html=True,
+st.divider()
+
+
+# ============================================================
+# Export (TXT + PDF premium)
+# ============================================================
+st.header("Export")
+
+# One‑pager data for exports
+onepager = rep.OnePager(
+    institution="Universidad San Ignacio de Loyola (USIL)",
+    program="Maestría en Administración de Negocios (MBA)",
+    course="Proyectos de Inversión / Valuation",
+    currency="PYG",
+    project=project,
+    responsible=responsible,
+    report_date=date.today().isoformat(),
+    verdict=verdict,
+    rationale=rationale,
+    # KPIs
+    npv_base=float(npv_base) if np.isfinite(npv_base) else None,
+    irr_base=float(irr_base) if irr_base is not None else None,
+    payback_simple=float(pb_simple) if pb_simple is not None else None,
+    payback_discounted=float(pb_disc) if pb_disc is not None else None,
+    # assumptions
+    n_years=int(n_years),
+    g_exp=float(g_exp),
+    g_inf=float(g_inf),
+    wacc=float(wacc),
+    ke=float(ke),
+    kd=float(kd),
+    capex0=float(capex0),
+    fcf1=float(fcf_y1),
+    # accounting bridge
+    ebit=float(ebit),
+    nopat=float(nopat),
+    delta_wc=float(delta_wc),
+    capex_y1=float(capex_y1),
+    # deterministic valuation components
+    pv_fcf=float(pv_fcf) if np.isfinite(pv_fcf) else None,
+    pv_tv=float(pv_tv) if np.isfinite(pv_tv) else None,
+    tv=float(tv) if np.isfinite(tv) else None,
+    # Monte Carlo
+    sims=int(sims),
+    valid_rate=float(valid_rate) if np.isfinite(valid_rate) else None,
+    prob_neg=float(prob_neg) if np.isfinite(prob_neg) else None,
+    p5=float(p5) if np.isfinite(p5) else None,
+    p50=float(p50) if np.isfinite(p50) else None,
+    p95=float(p95) if np.isfinite(p95) else None,
+    mean=float(mean) if np.isfinite(mean) else None,
+    std=float(std) if np.isfinite(std) else None,
+    cvar5=float(cvar5) if np.isfinite(cvar5) else None,
+    checks=[(a, bool(b)) for a, b in checks],
+    fcf_years=[float(x) for x in fcf_series],
 )
-bcol1, bcol2, bcol3, bcol4 = st.columns(4)
-card(bcol1, "EBIT", fmt_pyg(ebit), "Ventas − CV − CF − Dep.")
-card(bcol2, "NOPAT", fmt_pyg(nopat), "EBIT × (1−T)")
-card(bcol3, "ΔCT (AR+INV−AP)", fmt_pyg(d_wc), "Uso de caja (si +)")
-card(bcol4, "FCF Año 1", fmt_pyg(fcf1), "NOPAT + Dep − CAPEX − ΔCT")
 
-st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+onepager_txt = rep.build_onepager_text(onepager)
 
-# Footer
-st.markdown(
-    "<div class='small-muted'>Uso académico (MBA). Resultados dependen de supuestos y evidencia; no sustituyen due diligence. · <b>ValuationSuite USIL (PYG)</b></div>",
-    unsafe_allow_html=True,
+st.download_button(
+    "⬇️ Descargar One‑Pager (TXT)",
+    data=onepager_txt.encode("utf-8"),
+    file_name="one_pager_usil.txt",
+    mime="text/plain",
 )
 
-# -----------------------------
-# Exports
-# -----------------------------
-st.markdown("### Export")
+# PDF (ReportLab only)
+if rep.REPORTLAB_OK:
+    # histogram arrays for PDF mini‑chart
+    hist_counts, hist_edges = (None, None)
+    if npv_valid.size:
+        hist_counts, hist_edges = np.histogram(npv_valid, bins=36)
 
-# Build onepager data dict (avoid dataclass ordering issues on Streamlit Cloud)
-onepager = {
-    "project": project,
-    "responsible": responsible,
-    "verdict": verdict,
-    "rationale": rationale,
-    "capex0": float(capex0),
-    "n_years": int(n_years),
-    "g_exp": float(g_exp),
-    "g_inf": float(g_inf),
-    "wacc": float(wacc),
-    "ke": float(ke),
-    "kd": float(kd),
-    "fcf1": float(fcf1),
-    "npv_base": float(npv_base) if np.isfinite(npv_base) else float("nan"),
-    "irr_base": float(irr_base) if irr_base is not None else None,
-    "pb_simple": pb_simple,
-    "pb_disc": pb_disc,
-    "tv": float(tv) if np.isfinite(tv) else float("nan"),
-    "fcf_years": [float(x) for x in fcf_years],
-    "pv_fcf": float(pv_fcf) if np.isfinite(pv_fcf) else float("nan"),
-    "pv_tv": float(pv_tv) if np.isfinite(pv_tv) else float("nan"),
-    "sims": int(sims),
-    "valid_rate": float(valid_rate),
-    "prob_neg": float(prob_neg) if np.isfinite(prob_neg) else float("nan"),
-    "p5": float(p5) if np.isfinite(p5) else float("nan"),
-    "p50": float(p50) if np.isfinite(p50) else float("nan"),
-    "p95": float(p95) if np.isfinite(p95) else float("nan"),
-    "mean": float(mean) if np.isfinite(mean) else float("nan"),
-    "std": float(std) if np.isfinite(std) else float("nan"),
-    "cvar5": float(cvar5) if np.isfinite(cvar5) else float("nan"),
-    "checklist_lines": checklist_lines,
-    "npv_valid": npv_valid.tolist(),
-}
-
-# TXT export (always available)
-txt_lines = []
-txt_lines.append("ONE-PAGER EJECUTIVO — EVALUACIÓN FINANCIERA (PYG)")
-txt_lines.append("Universidad San Ignacio de Loyola (USIL) — MBA — Proyectos de Inversión / Valuation")
-txt_lines.append(f"Fecha: {date.today().isoformat()}")
-txt_lines.append(f"Proyecto: {project} | Responsable: {responsible}")
-txt_lines.append("")
-txt_lines.append(f"DICTAMEN: {verdict}")
-txt_lines.append(rationale)
-txt_lines.append("")
-txt_lines.append("KPIs (determinístico)")
-txt_lines.append(f"- VAN (base): {fmt_pyg(npv_base)}")
-txt_lines.append(f"- TIR (base): {fmt_pct(irr_base)}")
-txt_lines.append(f"- Payback simple: {pb_simple:.2f} años" if pb_simple is not None else "- Payback simple: N/A")
-txt_lines.append(f"- Payback descontado: {pb_disc:.2f} años" if pb_disc is not None else "- Payback descontado: N/A")
-txt_lines.append("")
-txt_lines.append("Flujos proyectados (FCF) — ciclo 1..N")
-for i, v in enumerate(fcf_years, start=1):
-    txt_lines.append(f"- Año {i}: {fmt_pyg(v)}")
-txt_lines.append(f"- TV (en año {n_years}): {fmt_pyg(tv)}")
-txt_lines.append("")
-txt_lines.append("Monte Carlo")
-txt_lines.append(f"- Simulaciones: {sims:,} | válidas: {valid_rate:.1%}")
-txt_lines.append(f"- P(VAN<0): {prob_neg*100:.1f}%")
-txt_lines.append(f"- P5/P50/P95: {fmt_pyg(p5)} / {fmt_pyg(p50)} / {fmt_pyg(p95)}")
-txt_lines.append(f"- Media: {fmt_pyg(mean)} | σ: {fmt_pyg(std)} | CVaR5: {fmt_pyg(cvar5)}")
-txt_lines.append("")
-txt_lines.append("Checklist Comité (automático)")
-for l in checklist_lines:
-    txt_lines.append(f"- {l}")
-txt_lines.append("")
-txt_lines.append("Uso académico (MBA). Resultados dependen de supuestos y evidencia; no sustituyen due diligence.")
-txt_bytes = ("\n".join(txt_lines)).encode("utf-8")
-
-st.download_button("⬇️ Descargar One-Pager (TXT)", data=txt_bytes, file_name="one_pager_usil.txt", mime="text/plain")
-
-# PDF export (if deps)
-if REPORTLAB_OK and MATPLOTLIB_OK:
-    try:
-        pdf_bytes = generate_onepager_pdf(onepager)
-        st.download_button("⬇️ Descargar One-Pager (PDF)", data=pdf_bytes, file_name="one_pager_usil.pdf", mime="application/pdf")
-    except Exception as e:
-        st.warning(f"No se pudo generar PDF: {e}")
+    pdf_bytes = rep.generate_onepager_pdf(
+        onepager=onepager,
+        hist_counts=hist_counts,
+        hist_edges=hist_edges,
+    )
+    st.download_button(
+        "⬇️ Descargar One‑Pager (PDF premium)",
+        data=pdf_bytes,
+        file_name="one_pager_usil.pdf",
+        mime="application/pdf",
+    )
 else:
-    st.info("Para exportar PDF, asegúrate de tener `reportlab` y `matplotlib` en requirements.txt.")
+    st.info("Para exportar PDF, agrega `reportlab` a requirements.txt.")
