@@ -4,5 +4,7 @@ numpy-financial>=1.0.0
 pandas>=2.0
 plotly>=5.18
 reportlab>=4.0.0
+matplotlib
+
 
 
