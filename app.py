@@ -596,10 +596,10 @@ class OnePagerData:
     p95: float
     mean_npv: float = float('nan')
     std_npv: float = float('nan')
-    skew_npv: float
-    cvar5: float
-    hist_edges: np.ndarray
-    hist_counts: np.ndarray
+    skew_npv: float = float('nan')
+    cvar5: float = float('nan')
+    hist_edges: np.ndarray = field(default_factory=lambda: np.array([]))
+    hist_counts: np.ndarray = field(default_factory=lambda: np.array([]))
 
     # Comité
     verdict: str
@@ -1461,10 +1461,10 @@ class OnePagerData:
     p95: float
     mean_npv: float = float('nan')
     std_npv: float = float('nan')
-    skew_npv: float
-    cvar5: float
-    hist_edges: np.ndarray
-    hist_counts: np.ndarray
+    skew_npv: float = float('nan')
+    cvar5: float = float('nan')
+    hist_edges: np.ndarray = field(default_factory=lambda: np.array([]))
+    hist_counts: np.ndarray = field(default_factory=lambda: np.array([]))
 
     # Comité
     verdict: str
