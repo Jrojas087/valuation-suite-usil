@@ -15,6 +15,7 @@
 # - One-pager ejecutivo: dashboard premium + export PDF 1 página (sin matplotlib)
 
 import io
+import textwrap
 from dataclasses import dataclass
 from datetime import date
 
