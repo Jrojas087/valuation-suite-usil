@@ -16,7 +16,7 @@
 
 import io
 import textwrap
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 import numpy as np
@@ -594,8 +594,8 @@ class OnePagerData:
     p5: float
     p50: float
     p95: float
-    mean_npv: float
-    std_npv: float
+    mean_npv: float = float('nan')
+    std_npv: float = float('nan')
     skew_npv: float
     cvar5: float
     hist_edges: np.ndarray
@@ -925,11 +925,6 @@ with colx2:
     else:
         st.info("Para exportar PDF, agrega `reportlab` a requirements.txt.")
 
-def fmt_pct(x: float) -> str:
-    try:
-        return f"{x*100:.2f}%"
-    except Exception:
-        return "—"
 
 def safe_float(x, default=0.0):
     try:
@@ -1464,8 +1459,8 @@ class OnePagerData:
     p5: float
     p50: float
     p95: float
-    mean_npv: float
-    std_npv: float
+    mean_npv: float = float('nan')
+    std_npv: float = float('nan')
     skew_npv: float
     cvar5: float
     hist_edges: np.ndarray
