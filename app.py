@@ -24,6 +24,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+# leave a little breathing room above the title so the header card doesn’t sit
+# flush against the browser chrome
+st.markdown("<br><br>", unsafe_allow_html=True)
 
 # ============================================================
 # Estilo (premium dark dashboard)
@@ -39,7 +42,7 @@ html, body, [class*="stApp"] { background: radial-gradient(1200px 700px at 20% 0
 h1,h2,h3,h4,h5,h6, p, div, span, label { color: var(--text); }
 [data-testid="stSidebar"]{ background: linear-gradient(180deg, var(--bg1), #050914) !important; border-right: 1px solid var(--line); }
 [data-testid="stMetric"]{ background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border: 1px solid var(--line); padding: 14px 14px; border-radius: 14px; }
-.block-container { padding-top: 1.2rem; }
+.block-container { padding-top: 2.5rem; padding-bottom: 2rem; }
 hr { border-color: var(--line); }
 .card {
   background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
@@ -518,8 +521,11 @@ with colD:
         st.warning("Monte Carlo no generó resultados válidos (revisar WACC vs g∞, rangos y supuestos).")
     st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<div class='small' style='text-align:center; margin-top:8px;'>Uso académico (MBA). Resultados dependen de supuestos y evidencia; no sustituyen due diligence. · ValuationSuite USIL (PYG)</div>", unsafe_allow_html=True)
+st.markdown("<div class='small' style='text-align:center; margin-top:8px; margin-bottom:16px;'>Uso académico (MBA). Resultados dependen de supuestos y evidencia; no sustituyen due diligence. · ValuationSuite USIL (PYG)</div>", unsafe_allow_html=True)
 
+# add extra bottom padding before the export section so the footer text is not
+# glued to the divider
+st.markdown("<br><br>", unsafe_allow_html=True)
 st.divider()
 
 
