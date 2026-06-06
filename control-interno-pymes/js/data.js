@@ -14,17 +14,18 @@ const COURSE = {
       icon: "📚",
       content: `
         <h2>¿Qué es el Control Interno?</h2>
-        <p>El <strong>control interno</strong> es un proceso llevado a cabo por el directorio, la gerencia y demás personal de una organización, diseñado para proporcionar un grado de <em>seguridad razonable</em> en cuanto a la consecución de los siguientes objetivos:</p>
+        <p>El <strong>control interno</strong> es el conjunto de reglas, hábitos y revisiones que una empresa pone en práctica para cuidar su dinero, sus bienes y su reputación. Lo aplican el dueño, los gerentes y todos los empleados — no es tarea de una sola persona.</p>
+        <p>Su propósito es dar <em>certeza razonable</em> (no absoluta) de que la empresa logra tres tipos de objetivos:</p>
         <ul>
-          <li><strong>Objetivos operativos:</strong> Eficacia y eficiencia en las operaciones.</li>
-          <li><strong>Objetivos de información:</strong> Fiabilidad de la información financiera y no financiera.</li>
-          <li><strong>Objetivos de cumplimiento:</strong> Acatamiento de leyes y normas aplicables.</li>
+          <li><strong>Objetivos operativos:</strong> Que las cosas se hagan bien y sin desperdiciar recursos.</li>
+          <li><strong>Objetivos de información:</strong> Que los datos que usa la empresa —ventas, costos, inventarios— sean confiables.</li>
+          <li><strong>Objetivos de cumplimiento:</strong> Que la empresa cumpla las leyes y regulaciones, como las de la DNIT.</li>
         </ul>
         <div class="highlight-box">
-          <strong>Concepto clave:</strong> El control interno proporciona <em>seguridad razonable</em>, no absoluta. Ningún sistema puede garantizar el éxito total porque siempre existe el factor humano y circunstancias imprevistas.
+          <strong>Punto clave:</strong> Ningún sistema de control elimina todos los riesgos. Siempre queda algo de incertidumbre porque trabajan personas y hay situaciones imprevistas. Por eso decimos que da "certeza razonable", no garantía total.
         </div>
-        <h2>El Marco COSO</h2>
-        <p>El <strong>Marco Integrado de Control Interno COSO 2013</strong> (Committee of Sponsoring Organizations) es el estándar internacional más reconocido. Define <strong>cinco componentes interrelacionados</strong> y <strong>17 principios</strong> que soportan a cada componente:</p>
+        <h2>El Marco COSO — la referencia mundial</h2>
+        <p>El <strong>Marco COSO 2013</strong> (siglas en inglés de un comité de organizaciones profesionales) es el sistema de referencia más usado en el mundo para diseñar y evaluar el control interno. Define <strong>cinco componentes</strong> que toda organización debería tener:</p>
         <ol>
           <li>Entorno de Control</li>
           <li>Evaluación de Riesgos</li>
@@ -32,46 +33,47 @@ const COURSE = {
           <li>Información y Comunicación</li>
           <li>Actividades de Supervisión</li>
         </ol>
+        <p>A lo largo de este curso vamos a ver cada uno en detalle, con ejemplos prácticos para PYMES paraguayas.</p>
         <h2>¿Por qué importa para las PYMES en Paraguay?</h2>
-        <p>Las PYMES representan más del <strong>90 % del tejido empresarial paraguayo</strong>. Sin controles adecuados enfrentan:</p>
+        <p>Las PYMES representan más del <strong>90 % del tejido empresarial paraguayo</strong>. Sin controles básicos, muchas enfrentan problemas que se podrían evitar:</p>
         <ul>
-          <li>Pérdidas por fraude o errores no detectados</li>
-          <li>Dificultades para acceder a crédito (BNF, AFD)</li>
-          <li>Incumplimientos tributarios ante la SET</li>
-          <li>Ineficiencias que reducen la competitividad</li>
+          <li>Pérdidas por robo o errores que nadie detecta a tiempo</li>
+          <li>Dificultades para conseguir crédito en el BNF o la AFD</li>
+          <li>Multas de la DNIT por registros contables inconsistentes</li>
+          <li>Ineficiencias que reducen la rentabilidad del negocio</li>
         </ul>
         <div class="tip-box">
-          <strong>Tip práctico:</strong> Implementar control interno no requiere grandes inversiones. Comenzar con procedimientos escritos simples ya genera un impacto significativo en cualquier PYME.
+          <strong>Tip práctico:</strong> No hace falta ser una empresa grande para tener control interno. Empezar con procedimientos escritos simples y aplicarlos con consistencia ya hace una diferencia enorme en cualquier PYME.
         </div>
       `,
       quiz: [
         {
-          question: "¿Cuál es la finalidad principal del control interno según el Marco COSO?",
+          question: "¿Cuál es la principal función del control interno en una empresa?",
           options: [
-            "Maximizar las ganancias de la empresa",
-            "Proporcionar seguridad razonable en el logro de objetivos operativos, de información y de cumplimiento",
-            "Eliminar completamente todos los riesgos del negocio",
-            "Controlar exclusivamente las actividades del personal"
+            "Garantizar que la empresa siempre gane dinero",
+            "Dar certeza razonable de que la empresa logra sus objetivos operativos, de información y de cumplimiento",
+            "Eliminar por completo todos los riesgos del negocio",
+            "Controlar exclusivamente el trabajo del personal"
           ],
           correct: 1,
-          explanation: "El control interno proporciona seguridad RAZONABLE —no absoluta— sobre tres categorías de objetivos: operativos, de información y de cumplimiento."
+          explanation: "El control interno da certeza RAZONABLE, no total. Actúa sobre tres tipos de objetivos: operativos (eficiencia), de información (datos confiables) y de cumplimiento (leyes y normas)."
         },
         {
-          question: "¿Cuántos componentes tiene el Marco Integrado COSO 2013?",
+          question: "¿Cuántos componentes tiene el Marco COSO 2013?",
           options: ["3 componentes", "4 componentes", "5 componentes", "6 componentes"],
           correct: 2,
-          explanation: "El Marco COSO 2013 define 5 componentes: Entorno de Control, Evaluación de Riesgos, Actividades de Control, Información y Comunicación, y Actividades de Supervisión."
+          explanation: "El Marco COSO 2013 tiene 5 componentes: Entorno de Control, Evaluación de Riesgos, Actividades de Control, Información y Comunicación, y Actividades de Supervisión."
         },
         {
-          question: "¿El control interno puede garantizar que una empresa siempre logre sus objetivos?",
+          question: "¿El control interno puede garantizar que una empresa nunca tenga pérdidas ni errores?",
           options: [
             "Sí, si se implementa correctamente garantiza el éxito total",
-            "No, solo proporciona seguridad razonable, no absoluta",
-            "Sí, pero únicamente en empresas con más de 50 empleados",
-            "Depende del sector económico de la empresa"
+            "No, solo da certeza razonable porque siempre existe el factor humano y lo imprevisto",
+            "Sí, pero solo en empresas con más de 50 empleados",
+            "Depende del sector en que opere la empresa"
           ],
           correct: 1,
-          explanation: "El control interno proporciona seguridad RAZONABLE, no absoluta. El factor humano y los imprevistos siempre representan un riesgo residual."
+          explanation: "El control interno da certeza RAZONABLE, no absoluta. El factor humano y los imprevistos siempre generan algún nivel de riesgo que no puede eliminarse completamente."
         }
       ]
     },
@@ -83,33 +85,42 @@ const COURSE = {
       icon: "🏢",
       content: `
         <h2>¿Qué es el Entorno de Control?</h2>
-        <p>El <strong>Entorno de Control</strong> es el componente base de todos los demás. Establece el tono de la organización e influye en la conciencia de control del personal. Comprende los estándares, procesos y estructuras que sirven de base para implementar el control interno.</p>
-        <h2>Elementos del Entorno de Control</h2>
+        <p>El <strong>Entorno de Control</strong> es la base sobre la que se construyen todos los demás componentes. Es el clima dentro de la empresa: los valores que se viven, las reglas que se respetan y el ejemplo que da la dirección. Sin un entorno sólido, los demás controles se vuelven ineficaces.</p>
+        <h2>¿De qué está hecho?</h2>
         <ul>
-          <li><strong>Integridad y valores éticos:</strong> Código de conducta que guía el comportamiento de todos en la organización.</li>
-          <li><strong>Competencia del personal:</strong> Habilidades y conocimientos necesarios para cumplir las responsabilidades asignadas.</li>
-          <li><strong>Filosofía y estilo operativo de la dirección:</strong> El "tono desde la cima" que marca cómo la gerencia afronta los riesgos y los controles.</li>
-          <li><strong>Estructura organizacional:</strong> Distribución de autoridad y responsabilidad, con organigramas claros.</li>
-          <li><strong>Políticas y prácticas de recursos humanos:</strong> Contratación, evaluación y capacitación del personal.</li>
+          <li><strong>Honestidad y valores éticos:</strong> Las reglas de conducta que todo el mundo aplica, desde el dueño hasta el último empleado.</li>
+          <li><strong>Capacidad del personal:</strong> Que cada persona tenga los conocimientos y habilidades que su puesto requiere.</li>
+          <li><strong>El ejemplo de la dirección ("el tono desde arriba"):</strong> Cómo el dueño o gerente actúa en el día a día marca el estándar para toda la organización.</li>
+          <li><strong>Estructura clara:</strong> Que exista un organigrama, aunque sea simple, y que cada uno sepa qué hace y a quién le reporta.</li>
+          <li><strong>Políticas de personal:</strong> Cómo se contrata, se evalúa y se capacita a la gente.</li>
         </ul>
         <div class="highlight-box">
-          <strong>"El tono desde la cima":</strong> Cuando los dueños y gerentes demuestran con su propio comportamiento que la ética y los controles importan, el resto de la organización los sigue. Un líder que omite controles "por conveniencia" destruye la cultura de control.
+          <strong>"El tono desde arriba":</strong> Cuando el dueño o gerente demuestra con su propio comportamiento que la honestidad y el orden importan, el resto de la organización lo imita. Si quien lidera omite controles "por conveniencia", envía el mensaje de que las reglas son opcionales.
         </div>
-        <h2>En la práctica para una PYME</h2>
-        <p>Incluso en una empresa de 5 empleados, el entorno de control existe:</p>
+
+        <h2>Caso de referencia: empresa de transporte del interior del Paraguay</h2>
+        <p>Una empresa familiar de transporte de pasajeros con unos 15 empleados funcionó bien durante años bajo la dirección de su fundador. Cuando este se retiró, su hijo asumió la gerencia sin establecer ninguna regla formal de manejo de recursos.</p>
+        <p>Con el tiempo, el nuevo gerente empezó a usar combustible, repuestos y vehículos de la empresa para negocios propios. Los empleados lo veían, pero nadie decía nada porque "el jefe era el dueño". No había un código de conducta, no había rendición de cuentas, no había nadie más que pudiera reportar irregularidades.</p>
+        <p>Tres años después, la empresa acumuló deudas con la DNIT y proveedores, no podía pagar salarios en fecha y los socios minoritarios se enteraron demasiado tarde. No quedaban registros claros de nada.</p>
+        <div class="warning-box">
+          <strong>¿Qué falló?</strong> El Entorno de Control. No había valores claros desde la dirección, ni estructura de rendición de cuentas, ni canales para reportar problemas. Una empresa viable se destruyó no por falta de clientes, sino por falta de orden y honestidad interna.
+        </div>
+
+        <h2>En la práctica para una PYME pequeña</h2>
+        <p>Incluso en una empresa de 5 personas, el entorno de control existe o no existe:</p>
         <ul>
           <li>¿El dueño predica con el ejemplo en cuanto a honestidad?</li>
-          <li>¿Existe un organigrama, aunque sea simple?</li>
-          <li>¿Hay descripciones de puestos escritas?</li>
-          <li>¿Se capacita al personal al ingresar?</li>
+          <li>¿Hay un organigrama, aunque sea dibujado a mano?</li>
+          <li>¿Cada empleado sabe exactamente qué hace y a quién le reporta?</li>
+          <li>¿Se explica al personal cómo se espera que se comporte en situaciones difíciles?</li>
         </ul>
         <div class="tip-box">
-          <strong>Tip práctico:</strong> Redactar un breve "Código de Conducta" de una página y compartirlo con todo el equipo es un excelente primer paso para formalizar el Entorno de Control.
+          <strong>Tip práctico:</strong> Redactar un "Código de Conducta" de una sola página —con tres o cuatro reglas básicas de honestidad y responsabilidad— y compartirlo con todo el equipo es un primer paso concreto y de bajo costo para construir un buen Entorno de Control.
         </div>
       `,
       quiz: [
         {
-          question: "¿Cuál componente COSO se considera la base de todos los demás?",
+          question: "¿Cuál componente del Marco COSO es la base de todos los demás?",
           options: [
             "Evaluación de Riesgos",
             "Entorno de Control",
@@ -117,29 +128,29 @@ const COURSE = {
             "Actividades de Supervisión"
           ],
           correct: 1,
-          explanation: "El Entorno de Control es el componente base. Sin un tono adecuado desde la cima, los demás componentes pierden efectividad."
+          explanation: "El Entorno de Control es la base. Sin un clima ético y una estructura clara, los demás controles pierden efectividad porque se aplican en una organización sin reglas ni valores sólidos."
         },
         {
           question: "¿Qué elemento NO forma parte del Entorno de Control?",
           options: [
-            "Valores éticos e integridad",
-            "Identificación y análisis de riesgos",
-            "Estructura organizacional",
-            "Políticas de recursos humanos"
+            "Los valores éticos del dueño y del personal",
+            "El análisis de cuáles riesgos pueden dañar al negocio",
+            "La estructura organizacional y los roles definidos",
+            "Las políticas para contratar y capacitar al personal"
           ],
           correct: 1,
-          explanation: "La identificación y análisis de riesgos corresponde al componente 'Evaluación de Riesgos', no al Entorno de Control."
+          explanation: "Analizar qué riesgos pueden afectar al negocio corresponde al componente de Evaluación de Riesgos, no al Entorno de Control."
         },
         {
-          question: "¿Por qué son importantes los valores éticos en el Entorno de Control?",
+          question: "¿Por qué es tan importante que el dueño o gerente dé el ejemplo en honestidad?",
           options: [
-            "Únicamente para cumplir con los requisitos de clientes externos",
-            "Porque establecen el 'tono desde la cima' que guía el comportamiento de toda la organización",
-            "Solo son relevantes para empresas que cotizan en bolsa",
-            "Para reducir la carga impositiva ante la SET"
+            "Solo para cumplir con requisitos de clientes externos",
+            "Porque su comportamiento define el clima ético de toda la empresa y el resto lo imita",
+            "Solo importa en empresas grandes con muchos empleados",
+            "Para reducir la carga impositiva ante la DNIT"
           ],
           correct: 1,
-          explanation: "Los valores éticos definen el 'tono desde la cima'. Cuando la dirección actúa con integridad, genera una cultura de control que impregna toda la organización."
+          explanation: "El 'tono desde arriba' es clave. Cuando la dirección actúa con integridad, genera una cultura donde los controles se respetan. Cuando no lo hace, envía el mensaje de que las reglas son opcionales."
         }
       ]
     },
@@ -151,70 +162,70 @@ const COURSE = {
       icon: "⚠️",
       content: `
         <h2>¿Qué es la Evaluación de Riesgos?</h2>
-        <p>La <strong>Evaluación de Riesgos</strong> implica identificar y analizar los riesgos relevantes para el logro de los objetivos de la organización, formando la base para determinar cómo deben gestionarse.</p>
-        <h2>Riesgo Inherente vs. Riesgo Residual</h2>
+        <p>Antes de poner controles, hay que saber <em>qué puede salir mal</em>. La <strong>Evaluación de Riesgos</strong> es el proceso de identificar, analizar y decidir cómo manejar los riesgos que pueden impedir que la empresa logre sus objetivos.</p>
+        <h2>Riesgo natural vs. riesgo que queda después de controlar</h2>
         <ul>
-          <li><strong>Riesgo inherente:</strong> El riesgo que existe antes de aplicar cualquier control. Es el riesgo "puro" del negocio.</li>
-          <li><strong>Riesgo residual:</strong> El riesgo que permanece después de aplicar los controles. Debe estar dentro del nivel de tolerancia aceptado por la dirección.</li>
+          <li><strong>Riesgo natural del negocio (inherente):</strong> El riesgo que existe por naturaleza, antes de aplicar cualquier control. Por ejemplo: tener caja en efectivo siempre implica algún riesgo de robo o error.</li>
+          <li><strong>Riesgo que queda (residual):</strong> El riesgo que sigue existiendo <em>después</em> de aplicar los controles. El objetivo es que sea lo suficientemente bajo como para que la empresa lo acepte.</li>
         </ul>
         <div class="highlight-box">
-          <strong>Fórmula conceptual:</strong><br>
-          Riesgo Residual = Riesgo Inherente − Efecto de los Controles<br><br>
-          El objetivo es que el riesgo residual quede dentro del <em>apetito de riesgo</em> definido por la organización.
+          <strong>En términos simples:</strong><br>
+          Riesgo que queda = Riesgo natural − Lo que reducen los controles<br><br>
+          El objetivo no es llegar a cero (imposible), sino que el riesgo que queda esté dentro de lo que el dueño está dispuesto a asumir.
         </div>
-        <h2>Tipos de Riesgos en una PYME</h2>
+        <h2>Tipos de riesgos en una PYME paraguaya</h2>
         <ul>
-          <li><strong>Estratégicos:</strong> Cambios en el mercado, nueva competencia.</li>
-          <li><strong>Operativos:</strong> Fallas en procesos, errores del personal.</li>
-          <li><strong>Financieros:</strong> Falta de liquidez, morosidad de clientes.</li>
-          <li><strong>De cumplimiento:</strong> Incumplimiento tributario, laboral o legal.</li>
-          <li><strong>De fraude:</strong> Malversación de activos, manipulación de registros.</li>
+          <li><strong>Riesgos del negocio (estratégicos):</strong> Un competidor nuevo, cambio en la demanda, pérdida de un proveedor clave.</li>
+          <li><strong>Riesgos de operación:</strong> Errores del personal, fallas en los procesos, accidentes.</li>
+          <li><strong>Riesgos financieros:</strong> Clientes que no pagan, falta de liquidez para cubrir gastos.</li>
+          <li><strong>Riesgos de cumplimiento:</strong> Multas de la DNIT, incumplimientos laborales ante el MTESS, problemas con municipalidades.</li>
+          <li><strong>Riesgo de fraude:</strong> Robo por parte de empleados o socios, facturas falsas, malversación de fondos. Este riesgo es tan importante que el Marco COSO exige evaluarlo siempre de forma explícita.</li>
         </ul>
-        <h2>Respuestas al Riesgo</h2>
-        <p>Ante un riesgo identificado, la organización puede elegir:</p>
+        <h2>¿Qué hacer con un riesgo identificado?</h2>
+        <p>Hay cuatro respuestas posibles:</p>
         <ol>
-          <li><strong>Aceptar:</strong> Asumir el riesgo sin acción adicional (riesgo bajo).</li>
-          <li><strong>Evitar:</strong> Eliminar la actividad que genera el riesgo.</li>
-          <li><strong>Reducir:</strong> Implementar controles para disminuir la probabilidad o impacto.</li>
-          <li><strong>Compartir/Transferir:</strong> Contratar seguros, tercerizar actividades.</li>
+          <li><strong>Aceptarlo:</strong> Vivir con el riesgo porque su impacto es bajo o controlarlo sería muy costoso.</li>
+          <li><strong>Evitarlo:</strong> Dejar de hacer la actividad que genera el riesgo.</li>
+          <li><strong>Reducirlo:</strong> Poner controles para bajar la probabilidad o el impacto.</li>
+          <li><strong>Trasladarlo:</strong> Contratar un seguro o tercerizar la actividad a alguien que se haga responsable.</li>
         </ol>
         <div class="tip-box">
-          <strong>Tip práctico:</strong> Elaborar una matriz de riesgos simple (lista de riesgos × probabilidad × impacto) ayuda a priorizar los riesgos que merecen mayor atención en una PYME.
+          <strong>Tip práctico:</strong> Una tabla simple con tres columnas —"¿Qué puede salir mal?", "¿Qué tan probable es?", "¿Cuánto nos costaría?"— es suficiente para empezar a manejar riesgos en una PYME. No hace falta software especializado.
         </div>
       `,
       quiz: [
         {
-          question: "¿Qué es el 'riesgo residual'?",
+          question: "¿Qué significa el 'riesgo que queda' (residual) después de aplicar controles?",
           options: [
-            "El riesgo que prácticamente no existe en la organización",
-            "El riesgo que permanece después de aplicar los controles internos",
-            "El riesgo más grave identificado en el negocio",
+            "Un riesgo tan pequeño que ya no importa",
+            "El riesgo que sigue existiendo una vez que los controles están funcionando",
+            "El riesgo más grave identificado en la empresa",
             "Un tipo específico de riesgo financiero"
           ],
           correct: 1,
-          explanation: "El riesgo residual es el que queda tras aplicar los controles. Debe estar dentro del nivel de tolerancia aceptado por la dirección."
+          explanation: "El riesgo residual es el que queda después de que los controles han hecho su trabajo. El objetivo es que sea lo suficientemente bajo como para que la empresa lo acepte."
         },
         {
-          question: "¿Cuáles son las cuatro respuestas posibles ante un riesgo identificado?",
+          question: "¿Cuáles son las cuatro formas de responder ante un riesgo identificado?",
           options: [
-            "Solo aceptarlo o eliminarlo completamente",
-            "Ignorarlo o documentarlo para futuras revisiones",
-            "Aceptar, evitar, reducir o compartir/transferir",
+            "Solo aceptarlo o eliminarlo",
+            "Ignorarlo o documentarlo para el futuro",
+            "Aceptarlo, evitarlo, reducirlo o trasladarlo",
             "Solo transferirlo a un tercero mediante seguros"
           ],
           correct: 2,
-          explanation: "Las cuatro respuestas al riesgo son: Aceptar, Evitar, Reducir y Compartir/Transferir. La elección depende del costo-beneficio de cada opción."
+          explanation: "Las cuatro respuestas son: Aceptar, Evitar, Reducir y Trasladar/Transferir. Cuál elegir depende del costo del control versus el impacto del riesgo."
         },
         {
-          question: "El COSO señala que existe un riesgo específico que siempre debe evaluarse. ¿Cuál es?",
+          question: "El Marco COSO exige que siempre se evalúe un riesgo específico. ¿Cuál es?",
           options: [
-            "La intensidad de la competencia en el mercado",
-            "Los cambios tecnológicos del sector",
+            "La llegada de competidores al mercado",
+            "Los cambios en la tecnología del sector",
             "El riesgo de fraude",
-            "Las fluctuaciones del tipo de cambio"
+            "Las variaciones del tipo de cambio"
           ],
           correct: 2,
-          explanation: "COSO establece explícitamente que el riesgo de fraude debe considerarse siempre como parte del proceso de Evaluación de Riesgos, independientemente del tamaño de la empresa."
+          explanation: "El Marco COSO establece explícitamente que el riesgo de fraude debe evaluarse siempre, en todas las empresas, sin importar su tamaño."
         }
       ]
     },
@@ -226,50 +237,48 @@ const COURSE = {
       icon: "🔧",
       content: `
         <h2>¿Qué son las Actividades de Control?</h2>
-        <p>Las <strong>Actividades de Control</strong> son las políticas y procedimientos que ayudan a asegurar que se lleven a cabo las respuestas de la dirección ante los riesgos identificados. Ocurren en todos los niveles de la organización.</p>
-        <h2>Tipos de Controles</h2>
-        <h3>Según su naturaleza:</h3>
+        <p>Las <strong>Actividades de Control</strong> son las acciones concretas que la empresa pone en práctica para evitar errores y fraudes. Son las "reglas en acción": no alcanza con tenerlas escritas, hay que aplicarlas.</p>
+        <h2>Tipos de controles según cuándo actúan</h2>
         <ul>
-          <li><strong>Controles preventivos:</strong> Evitan que los errores o irregularidades ocurran. <em>Ejemplo: requerir dos firmas para pagos superiores a ₲ 500.000.</em></li>
-          <li><strong>Controles detectivos:</strong> Identifican errores o irregularidades que ya ocurrieron. <em>Ejemplo: conciliación bancaria mensual.</em></li>
-          <li><strong>Controles correctivos:</strong> Corrigen los problemas detectados. <em>Ejemplo: proceso de reversión de asientos incorrectos.</em></li>
+          <li><strong>Controles que previenen (preventivos):</strong> Evitan que el problema ocurra. <em>Ejemplo: requerir la firma de dos personas para pagos superiores a un monto establecido.</em></li>
+          <li><strong>Controles que detectan (detectivos):</strong> Identifican un problema que ya ocurrió. <em>Ejemplo: comparar el dinero real en caja con lo que registra el sistema cada noche.</em></li>
+          <li><strong>Controles que corrigen:</strong> Reparan el daño una vez detectado el problema. <em>Ejemplo: proceso para revertir un asiento contable equivocado.</em></li>
         </ul>
-        <h3>Según su forma de ejecución:</h3>
+        <h2>Tipos de controles según quién los ejecuta</h2>
         <ul>
-          <li><strong>Controles manuales:</strong> Realizados por personas. <em>Ejemplo: revisión física del inventario.</em></li>
-          <li><strong>Controles automatizados:</strong> Realizados por sistemas informáticos. <em>Ejemplo: validación automática en el sistema contable.</em></li>
+          <li><strong>Controles manuales:</strong> Los realiza una persona. <em>Ejemplo: conteo físico de mercadería.</em></li>
+          <li><strong>Controles automáticos:</strong> Los ejecuta el sistema informático. <em>Ejemplo: el sistema no permite facturar si el cliente superó su límite de crédito.</em></li>
         </ul>
         <div class="highlight-box">
-          <strong>Segregación de funciones:</strong> Es una de las actividades de control más importantes. Consiste en separar las responsabilidades de <strong>autorizar</strong>, <strong>registrar</strong> y <strong>custodiar</strong> activos en personas diferentes. Esto dificulta que una sola persona pueda cometer y ocultar un fraude.
+          <strong>Separar roles (segregación de funciones):</strong> Es uno de los controles más efectivos y económicos. Consiste en que distintas personas se encarguen de <strong>pedir</strong>, <strong>aprobar</strong> y <strong>registrar/custodiar</strong> el dinero o los bienes. Cuando una sola persona hace todo esto, puede cometer y ocultar un fraude fácilmente.
         </div>
-        <h2>Actividades de Control más comunes en PYMES</h2>
+        <h2>Controles básicos para cualquier PYME</h2>
         <ul>
-          <li>Aprobaciones y autorizaciones documentadas</li>
-          <li>Conciliaciones bancarias mensuales</li>
-          <li>Control de inventarios (conteos periódicos)</li>
-          <li>Revisión de facturas antes del pago</li>
-          <li>Controles de acceso a sistemas informáticos</li>
-          <li>Custodia de activos (cajas, almacenes con llave)</li>
-          <li>Archivo ordenado de documentos fuente</li>
+          <li>Aprobación escrita antes de hacer pagos importantes</li>
+          <li>Comparación mensual del extracto bancario con los registros contables (conciliación bancaria)</li>
+          <li>Conteo periódico del inventario físico y comparación con el sistema</li>
+          <li>Revisión de facturas antes de pagar (comparar con lo que se pidió y lo que llegó)</li>
+          <li>Contraseñas y permisos de acceso al sistema contable</li>
+          <li>Caja y almacén con llave, bajo custodia de una persona responsable</li>
         </ul>
         <div class="tip-box">
-          <strong>Tip práctico:</strong> En PYMES pequeñas donde la segregación completa es difícil, el dueño/gerente puede compensar mediante supervisión directa y revisiones periódicas sorpresa.
+          <strong>Tip práctico:</strong> En una PYME pequeña donde la misma persona tiene que hacer varias tareas, el dueño puede compensar revisando personalmente los movimientos importantes y haciendo conteos sorpresa de caja e inventario de vez en cuando.
         </div>
       `,
       quiz: [
         {
-          question: "¿En qué consiste la segregación de funciones?",
+          question: "¿En qué consiste la separación de roles (segregación de funciones)?",
           options: [
-            "Dividir la empresa en múltiples departamentos independientes",
-            "Separar las responsabilidades de autorizar, registrar y custodiar activos en personas distintas",
-            "Contratar personal adicional para cada tarea",
-            "Usar sistemas informáticos en lugar de controles manuales"
+            "Dividir la empresa en muchos departamentos independientes",
+            "Que distintas personas se encarguen de pedir, aprobar y registrar/guardar el dinero o los bienes",
+            "Contratar personal especializado para cada tarea",
+            "Usar sistemas informáticos en lugar de procesos manuales"
           ],
           correct: 1,
-          explanation: "La segregación de funciones separa las responsabilidades de AUTORIZAR, REGISTRAR y CUSTODIAR en diferentes personas, dificultando que una sola cometa y oculte un fraude."
+          explanation: "La separación de roles divide las responsabilidades de PEDIR, APROBAR y REGISTRAR/CUSTODIAR en personas distintas. Así, para cometer un fraude se necesitaría la complicidad de varias personas a la vez."
         },
         {
-          question: "Un control que PREVIENE errores antes de que ocurran se denomina:",
+          question: "Un control que EVITA que ocurra el error o fraude se llama:",
           options: [
             "Control detectivo",
             "Control correctivo",
@@ -277,18 +286,18 @@ const COURSE = {
             "Control compensatorio"
           ],
           correct: 2,
-          explanation: "Los controles PREVENTIVOS actúan antes de que ocurra el error o irregularidad. Los detectivos los identifican después y los correctivos los remedian."
+          explanation: "Los controles PREVENTIVOS actúan antes de que ocurra el problema. Los detectivos lo identifican después y los correctivos lo remedian."
         },
         {
-          question: "¿Cuál de los siguientes es un ejemplo claro de actividad de control?",
+          question: "¿Cuál de estos es un ejemplo claro de actividad de control?",
           options: [
-            "Fijar los objetivos estratégicos de la empresa",
+            "Definir los objetivos de ventas del año",
             "Identificar los riesgos del negocio",
-            "Realizar una conciliación bancaria mensual",
-            "Comunicar los resultados anuales a los empleados"
+            "Comparar el extracto bancario con los registros contables cada mes",
+            "Comunicar los resultados del año a los empleados"
           ],
           correct: 2,
-          explanation: "La conciliación bancaria mensual es un control DETECTIVO que identifica discrepancias entre los registros contables y el extracto bancario."
+          explanation: "La comparación mensual entre el extracto bancario y los registros contables es un control DETECTIVO que identifica diferencias entre lo que dice el banco y lo que dice la empresa."
         }
       ]
     },
@@ -299,71 +308,72 @@ const COURSE = {
       duration: "20 min",
       icon: "📡",
       content: `
-        <h2>¿Por qué es clave la Información y Comunicación?</h2>
-        <p>Para que el control interno funcione, todos en la organización necesitan información relevante y oportuna. La <strong>Información y Comunicación</strong> como componente COSO abarca tanto los sistemas que generan datos internos como los canales por los que fluye esa información.</p>
-        <h2>Información de Calidad</h2>
-        <p>La información útil para el control interno debe ser:</p>
+        <h2>¿Por qué la información y la comunicación son parte del control interno?</h2>
+        <p>Para que los controles funcionen, las personas correctas necesitan recibir la información correcta en el momento correcto. Este componente del Marco COSO trata de cómo la empresa genera, comparte y protege los datos que necesita para controlarse a sí misma.</p>
+        <h2>¿Qué información sirve para el control interno?</h2>
+        <p>La información útil debe ser:</p>
         <ul>
-          <li><strong>Relevante:</strong> Relacionada con las decisiones que deben tomarse.</li>
-          <li><strong>Oportuna:</strong> Disponible en el momento en que se necesita.</li>
-          <li><strong>Suficiente:</strong> Con el nivel de detalle adecuado.</li>
-          <li><strong>Accesible:</strong> Disponible para quienes la necesitan.</li>
+          <li><strong>Relevante:</strong> Que sirva para las decisiones que hay que tomar.</li>
+          <li><strong>Oportuna:</strong> Disponible cuando se necesita, no dos meses después.</li>
+          <li><strong>Suficiente:</strong> Con el detalle justo — ni demasiado poca ni tan detallada que nadie la entienda.</li>
+          <li><strong>Accesible:</strong> Disponible para quien la necesita.</li>
           <li><strong>Protegida:</strong> Con acceso restringido a personas autorizadas.</li>
         </ul>
-        <h2>Comunicación Interna</h2>
+        <h2>Comunicación dentro de la empresa</h2>
         <p>La comunicación debe fluir en todas las direcciones:</p>
         <ul>
-          <li><strong>Descendente (de arriba hacia abajo):</strong> La dirección comunica objetivos, políticas y responsabilidades.</li>
-          <li><strong>Ascendente (de abajo hacia arriba):</strong> El personal reporta problemas, irregularidades y sugerencias.</li>
-          <li><strong>Horizontal:</strong> Coordinación entre áreas o departamentos.</li>
+          <li><strong>De arriba hacia abajo:</strong> La dirección comunica los objetivos, las reglas y las responsabilidades.</li>
+          <li><strong>De abajo hacia arriba:</strong> Los empleados reportan problemas, irregularidades y sugerencias sin miedo.</li>
+          <li><strong>Entre áreas:</strong> Coordinación entre departamentos para que no haya "islas de información".</li>
         </ul>
         <div class="highlight-box">
-          <strong>Canales de denuncia (Whistleblowing):</strong> Mecanismos que permiten al personal reportar irregularidades de manera confidencial y sin temor a represalias. Son una herramienta clave para detectar fraudes a tiempo.
+          <strong>Canal de denuncias:</strong> Es un mecanismo que permite a cualquier persona reportar irregularidades de forma confidencial y sin miedo a represalias. En muchas PYMES basta con que el dueño deje en claro que siempre está dispuesto a escuchar sin castigar al mensajero. Esto es fundamental para detectar fraudes que los controles formales no capturan.
         </div>
-        <h2>Comunicación Externa</h2>
+        <h2>Comunicación con el exterior</h2>
         <p>Las PYMES también deben gestionar la comunicación con:</p>
         <ul>
           <li>Clientes y proveedores</li>
-          <li>Entidades reguladoras (SET, MTESS, municipalidades)</li>
-          <li>Entidades financieras (bancos, cooperativas)</li>
+          <li>La DNIT (registros y declaraciones tributarias)</li>
+          <li>El MTESS (cumplimiento laboral)</li>
+          <li>Bancos y financieras (para acceder a crédito)</li>
         </ul>
         <div class="tip-box">
-          <strong>Tip práctico:</strong> Establecer una reunión semanal breve con el equipo para compartir indicadores clave es una forma simple y efectiva de mantener la comunicación interna activa en una PYME.
+          <strong>Tip práctico:</strong> Una reunión semanal corta con el equipo —aunque sea de 15 minutos— para revisar los indicadores clave (ventas, cobros, gastos) es una forma simple y efectiva de mantener la comunicación interna activa en una PYME.
         </div>
       `,
       quiz: [
         {
-          question: "¿Para qué sirven los canales de denuncia (whistleblowing) en el control interno?",
+          question: "¿Para qué sirve un canal de denuncia en el control interno de una empresa?",
           options: [
-            "Exclusivamente para atender quejas de clientes externos",
-            "Para que los empleados reporten irregularidades de forma confidencial y sin represalias",
+            "Solo para recibir quejas de clientes externos",
+            "Para que los empleados puedan reportar irregularidades de forma confidencial y sin miedo a represalias",
             "Para comunicar los resultados financieros a los inversionistas",
-            "Para recibir órdenes de compra de proveedores"
+            "Para recibir órdenes de proveedores"
           ],
           correct: 1,
-          explanation: "Los canales de denuncia permiten al personal reportar irregularidades con confidencialidad y protección contra represalias, siendo clave para la detección temprana de fraudes."
+          explanation: "Los canales de denuncia permiten detectar fraudes y problemas que los controles formales no capturan, especialmente cuando involucran a personas de autoridad. La clave es que quien reporta esté protegido."
         },
         {
-          question: "La comunicación interna en una organización debe fluir:",
+          question: "La comunicación dentro de una empresa debería fluir:",
           options: [
-            "Solo de la dirección hacia el personal (descendente)",
-            "Solo entre personas del mismo nivel jerárquico (horizontal)",
-            "En todas las direcciones: descendente, ascendente y horizontal",
-            "Solo hacia el exterior de la organización"
+            "Solo desde la dirección hacia los empleados",
+            "Solo entre personas del mismo nivel",
+            "En todas las direcciones: de arriba hacia abajo, de abajo hacia arriba y entre áreas",
+            "Solo hacia afuera de la organización"
           ],
           correct: 2,
-          explanation: "Una comunicación efectiva fluye en las tres direcciones: descendente (dirección→personal), ascendente (personal→dirección) y horizontal (entre áreas)."
+          explanation: "Una comunicación efectiva fluye en las tres direcciones: descendente (dirección→empleados), ascendente (empleados→dirección) y horizontal (entre áreas). Si alguna falla, la información necesaria para controlar no llega a quien la necesita."
         },
         {
           question: "¿Qué características debe tener la información para ser útil en el control interno?",
           options: [
-            "Ser lo más abundante y detallada posible en todo momento",
+            "Ser lo más abundante y detallada posible siempre",
             "Ser relevante, oportuna, suficiente, accesible y protegida",
-            "Ser exclusivamente de naturaleza financiera y contable",
+            "Ser exclusivamente de tipo financiero y contable",
             "Estar disponible solo para la alta dirección"
           ],
           correct: 1,
-          explanation: "La información de calidad debe ser relevante, oportuna, suficiente, accesible y protegida. El exceso de información también puede ser un problema (ruido)."
+          explanation: "La información de calidad cumple cinco condiciones: es relevante, oportuna, suficiente, accesible y protegida. Demasiada información también es un problema porque nadie la procesa."
         }
       ]
     },
@@ -375,64 +385,64 @@ const COURSE = {
       icon: "🔍",
       content: `
         <h2>¿Qué son las Actividades de Supervisión?</h2>
-        <p>Las <strong>Actividades de Supervisión</strong> (o Monitoreo) implican evaluar si los controles internos están presentes y funcionando correctamente. Es el componente que garantiza que el sistema de control interno evolucione y mejore con el tiempo.</p>
-        <h2>Tipos de Evaluaciones</h2>
+        <p>Los controles no se cuidan solos. La <strong>Supervisión</strong> (o monitoreo) es el proceso de verificar que los controles siguen funcionando como se planeó. Sin supervisión, un control puede volverse obsoleto, ignorado o ineficiente sin que nadie lo note.</p>
+        <h2>Dos tipos de revisión</h2>
         <ul>
-          <li><strong>Evaluaciones continuas:</strong> Integradas en las operaciones normales del negocio. <em>Ejemplo: el gerente revisa diariamente el resumen de ventas vs. cobros.</em></li>
-          <li><strong>Evaluaciones periódicas independientes:</strong> Revisiones separadas realizadas por personas distintas a quienes operan el control. <em>Ejemplo: auditoría interna anual, revisión del contador externo.</em></li>
+          <li><strong>Revisiones del día a día (continuas):</strong> Integradas en la operación normal. El dueño revisa el cierre de caja todas las noches, el encargado compara ventas con inventario cada semana. Se hacen sin interrumpir el negocio.</li>
+          <li><strong>Revisiones periódicas independientes:</strong> Realizadas por alguien distinto a quien opera el control, con mayor objetividad. Ejemplo: una auditoría por un contador externo, o que el dueño mismo revise todo en profundidad una vez al trimestre.</li>
         </ul>
         <div class="highlight-box">
-          <strong>La combinación ideal:</strong> Evaluaciones continuas para detectar problemas rápidamente + evaluaciones periódicas independientes para una visión objetiva. En PYMES pequeñas, el dueño puede realizar ambas.
+          <strong>La combinación ideal:</strong> Revisiones del día a día para detectar problemas rápidamente + revisiones periódicas independientes para una mirada objetiva. En PYMES pequeñas, el dueño puede hacer ambas.
         </div>
-        <h2>Clasificación de Deficiencias</h2>
-        <p>Cuando se identifican problemas en el control interno, se clasifican según su gravedad:</p>
+        <h2>¿Qué pasa cuando se encuentra un problema?</h2>
+        <p>No todos los problemas tienen el mismo peso. Se clasifican según su gravedad:</p>
         <ul>
-          <li><strong>Deficiencia menor:</strong> Un control no funciona como se diseñó, pero hay otros controles que compensan.</li>
-          <li><strong>Deficiencia significativa:</strong> Una deficiencia que merece atención, aunque no es tan grave como para considerarla material.</li>
-          <li><strong>Debilidad material:</strong> Una deficiencia grave que podría resultar en errores o irregularidades significativas no detectadas a tiempo.</li>
+          <li><strong>Falla menor:</strong> Un control no funciona como se diseñó, pero otro control compensa.</li>
+          <li><strong>Falla importante:</strong> Merece atención, aunque no sea tan grave como para considerarla crítica.</li>
+          <li><strong>Falla crítica (debilidad material):</strong> Una falla grave que podría permitir que errores o fraudes importantes pasen sin ser detectados.</li>
         </ul>
-        <h2>¿A quién se reportan las deficiencias?</h2>
+        <h2>¿A quién se reporta?</h2>
         <ul>
-          <li>Las deficiencias menores al responsable del área afectada.</li>
-          <li>Las deficiencias significativas y debilidades materiales a la dirección y, en casos relevantes, al órgano de gobierno (directorio, socios).</li>
+          <li>Las fallas menores, al responsable del área.</li>
+          <li>Las fallas importantes y críticas, al dueño o a los socios, para que tomen decisiones correctivas.</li>
         </ul>
         <div class="tip-box">
-          <strong>Tip práctico:</strong> Una lista de verificación mensual con los principales controles (¿se hizo la conciliación? ¿se aprobaron los pagos con doble firma? ¿se revisó el inventario?) es una herramienta de supervisión continua ideal para PYMES.
+          <strong>Tip práctico:</strong> Una lista de verificación mensual con los controles principales —"¿Se hizo la conciliación bancaria? ¿Se aprobaron los pagos grandes con doble firma? ¿Se contó el inventario?"— es una herramienta de supervisión continua ideal para cualquier PYME.
         </div>
       `,
       quiz: [
         {
-          question: "¿Cuál es la diferencia entre evaluaciones continuas y evaluaciones periódicas independientes?",
+          question: "¿Cuál es la diferencia entre revisiones del día a día y revisiones periódicas independientes?",
           options: [
-            "No hay ninguna diferencia práctica entre ambas",
-            "Las continuas son parte de las operaciones normales; las periódicas son revisiones separadas por personas distintas",
-            "Las periódicas siempre son más importantes e informativas",
-            "Las continuas solo pueden realizarlas auditores externos certificados"
+            "No hay diferencia práctica entre ambas",
+            "Las del día a día están integradas en la operación normal; las periódicas las hace alguien distinto con mayor objetividad",
+            "Las periódicas siempre son más importantes",
+            "Las del día a día solo las puede hacer un auditor externo"
           ],
           correct: 1,
-          explanation: "Las evaluaciones CONTINUAS están integradas en la operación diaria. Las PERIÓDICAS son separadas y realizadas por personas distintas a quienes operan el control, lo que les da mayor objetividad."
+          explanation: "Las revisiones continuas son parte de la operación diaria. Las periódicas independientes las realiza alguien distinto a quien opera el control, lo que les da mayor objetividad y detecta cosas que el equipo operativo puede pasar por alto."
         },
         {
-          question: "¿A quién deben reportarse las deficiencias significativas y debilidades materiales del control interno?",
+          question: "¿A quién deben reportarse las fallas importantes o críticas del control interno?",
           options: [
-            "Solo al contador que detectó el problema",
+            "Solo al contador que las detectó",
             "Al empleado que cometió el error",
-            "A la dirección y, si corresponde, al órgano de gobierno (directorio, socios)",
-            "Exclusivamente a los accionistas externos"
+            "Al dueño o a los socios, para que puedan tomar decisiones correctivas",
+            "Solo a los accionistas externos"
           ],
           correct: 2,
-          explanation: "Las deficiencias significativas y debilidades materiales deben reportarse a la dirección y, en casos relevantes, al órgano de gobierno para que puedan tomar acciones correctivas."
+          explanation: "Las fallas importantes y críticas deben llegar al dueño o a quienes gobiernan la empresa para que puedan tomar acción. Reportarlas solo al área afectada no garantiza que se corrijan."
         },
         {
-          question: "¿Qué es una 'debilidad material' en el control interno?",
+          question: "¿Qué es una 'falla crítica' (debilidad material) en el control interno?",
           options: [
-            "Una deficiencia menor fácilmente corregible sin consecuencias",
-            "La avería de un equipo o sistema informático",
-            "Una deficiencia grave que podría resultar en errores o irregularidades significativas no detectados a tiempo",
+            "Una falla menor que se corrige fácilmente",
+            "El daño de un equipo o sistema informático",
+            "Una falla grave que podría permitir que errores o fraudes importantes pasen sin ser detectados",
             "La falta de tecnología moderna en la empresa"
           ],
           correct: 2,
-          explanation: "Una DEBILIDAD MATERIAL es la deficiencia más grave. Implica que los errores o irregularidades significativas podrían no ser detectados oportunamente por el sistema de control."
+          explanation: "Una falla crítica es la más grave: significa que el sistema de control no puede detectar a tiempo errores o fraudes de magnitud significativa."
         }
       ]
     }
@@ -440,203 +450,113 @@ const COURSE = {
 
   finalExam: [
     {
-      question: "¿Cuál es el marco de referencia internacional más reconocido para el control interno?",
-      options: ["ISO 9001", "COSO", "NIIF/IFRS", "Basilea III"],
-      correct: 1,
-      module: 1
-    },
-    {
-      question: "¿Cuántos componentes tiene el Marco Integrado COSO 2013?",
-      options: ["3", "4", "5", "7"],
-      correct: 2,
-      module: 1
-    },
-    {
-      question: "El componente que establece las bases éticas y estructurales de todo el sistema de control interno es:",
-      options: ["Evaluación de Riesgos", "Actividades de Control", "Entorno de Control", "Actividades de Supervisión"],
-      correct: 2,
-      module: 2
-    },
-    {
-      question: "¿Qué significa que el control interno proporciona 'seguridad razonable'?",
+      question: "Juan tiene una ferretería y descubrió diferencias entre el dinero en caja y el sistema. El mismo empleado cobra y registra las ventas. ¿Qué control básico debería aplicar?",
       options: [
-        "Garantiza el 100% de éxito en el logro de objetivos",
-        "No existe ninguna garantía en absoluto",
-        "Reduce pero no elimina los riesgos al logro de objetivos",
-        "Solo aplica a empresas con más de 100 empleados"
-      ],
-      correct: 2,
-      module: 1
-    },
-    {
-      question: "La segregación de funciones es importante principalmente porque:",
-      options: [
-        "Reduce los costos de personal en la empresa",
-        "Evita que una sola persona controle completamente una transacción, dificultando el fraude",
-        "Mejora la productividad individual de cada empleado",
-        "Es un requisito legal obligatorio para todas las empresas en Paraguay"
+        "Contratar un auditor externo mensualmente",
+        "Que una persona distinta cobre y otra distinta registre en el sistema",
+        "Instalar cámaras de seguridad en la caja",
+        "Eliminar los cobros en efectivo"
       ],
       correct: 1,
       module: 4
     },
     {
-      question: "¿Cuál es un ejemplo de control PREVENTIVO en una PYME?",
+      question: "Una empresa de fletes notó que el gasto en combustible se triplicó sin que los viajes aumentaran. ¿Qué control habría detectado el problema antes?",
       options: [
-        "Revisión de gastos al cierre del mes",
+        "Reuniones mensuales con los choferes",
+        "Un registro semanal que compare los kilómetros recorridos con el combustible cargado",
+        "Cambiar todos los vehículos por modelos nuevos",
+        "Reducir los viajes a la mitad"
+      ],
+      correct: 1,
+      module: 4
+    },
+    {
+      question: "La dueña de una boutique notó que falta mercadería del depósito pero no sabe cuánto ni desde cuándo. ¿Qué control le hubiera dado información temprana?",
+      options: [
+        "Contratar más personal para el depósito",
+        "Hacer conteos físicos periódicos del inventario y comparar con los registros del sistema",
+        "Poner un candado adicional en el depósito",
+        "Reducir la cantidad de ropa almacenada"
+      ],
+      correct: 1,
+      module: 4
+    },
+    {
+      question: "Un restaurante paga facturas sin verificar si lo que cobra el proveedor coincide con lo que realmente recibió. Un proveedor empezó a cobrar por entregas mayores. ¿Qué control habría evitado esto?",
+      options: [
+        "Conciliación bancaria mensual",
+        "Comparar la orden de compra, el remito de entrega y la factura antes de autorizar cada pago",
         "Auditoría anual por contador externo",
-        "Requerir dos firmas para pagos superiores a un monto establecido",
-        "Conciliación bancaria mensual"
-      ],
-      correct: 2,
-      module: 4
-    },
-    {
-      question: "¿Qué tipo de riesgo se asocia con el incumplimiento de leyes y regulaciones?",
-      options: ["Riesgo operativo", "Riesgo financiero", "Riesgo de cumplimiento", "Riesgo estratégico"],
-      correct: 2,
-      module: 3
-    },
-    {
-      question: "Cuando una PYME identifica un riesgo que no puede controlar completamente, ¿qué puede hacer?",
-      options: [
-        "Ignorarlo hasta que se manifieste",
-        "Cerrar esa línea de negocio inmediatamente",
-        "Aceptarlo, documentarlo o transferirlo (ej. mediante seguros)",
-        "Contratar más personal para vigilarlo"
-      ],
-      correct: 2,
-      module: 3
-    },
-    {
-      question: "Las políticas y procedimientos escritos son importantes en el control interno porque:",
-      options: [
-        "Son exigidos directamente por la SET para todas las PYMES",
-        "Aseguran que las actividades de control se ejecuten de forma consistente",
-        "Aumentan automáticamente el valor de mercado de la empresa",
-        "Solo son útiles en empresas con más de 50 empleados"
+        "Canal de denuncias para empleados"
       ],
       correct: 1,
       module: 4
     },
     {
-      question: "¿Qué elemento del Entorno de Control se conoce como 'el tono desde la cima'?",
+      question: "El gerente de una empresa de construcción firmó contratos con proveedores que son sus familiares, cobrando precios superiores al mercado. Los empleados lo saben pero nadie habla. ¿Qué falló principalmente?",
       options: [
-        "Las políticas de contratación de RRHH",
-        "Los sistemas de información contable",
-        "La filosofía y el estilo operativo de la dirección",
-        "Los manuales de procedimientos operativos"
+        "Los sistemas informáticos de la empresa",
+        "La capacitación técnica del personal",
+        "El clima ético y los valores en la dirección de la empresa",
+        "La falta de un manual de procedimientos"
       ],
       correct: 2,
       module: 2
     },
     {
-      question: "Un canal de denuncia efectivo debe garantizar principalmente:",
+      question: "Una PYME fue multada por la DNIT porque no podía presentar sus registros contables. ¿Qué problema de control interno explica mejor esta situación?",
       options: [
-        "La identificación pública del denunciante ante toda la empresa",
-        "Que todas las denuncias se archiven sin investigación previa",
-        "Confidencialidad y protección contra represalias al denunciante",
-        "Que solo los gerentes puedan reportar irregularidades"
+        "No separaba roles en el área de ventas",
+        "No tenía sistemas ni procedimientos para archivar y conservar su información contable",
+        "No hacía revisiones continuas de sus controles",
+        "No identificó correctamente sus riesgos operativos"
       ],
-      correct: 2,
+      correct: 1,
       module: 5
     },
     {
-      question: "¿Con qué frecuencia mínima se recomienda realizar la conciliación bancaria en una PYME?",
+      question: "Una empleada descubrió que su jefe aprobaba pagos inflados a un proveedor, pero tenía miedo de decirlo. ¿Qué mecanismo de control faltaba en esa empresa?",
       options: [
-        "Una vez al año, al cierre del ejercicio",
-        "Solo cuando se detectan diferencias en los saldos",
-        "Al menos mensualmente",
-        "Cada cinco años con el contador externo"
+        "Un sistema contable más moderno",
+        "Un canal de denuncia confidencial que proteja a quien reporta",
+        "Una auditoría externa contratada",
+        "Más cámaras en la oficina"
+      ],
+      correct: 1,
+      module: 5
+    },
+    {
+      question: "Don Carlos nota que a fin de mes siempre falta dinero aunque las ventas se ven normales. Decide comparar cada noche el total del sistema con el efectivo real en caja. ¿Qué tipo de control está aplicando?",
+      options: [
+        "Control preventivo: evita que ocurran las diferencias",
+        "Control detectivo: identifica diferencias después de que ocurrieron",
+        "Control correctivo: repara el daño causado",
+        "No es un control, es solo una rutina administrativa"
+      ],
+      correct: 1,
+      module: 4
+    },
+    {
+      question: "La gerente de una farmacia nota que las ventas del turno noche son consistentemente menores sin razón aparente. ¿Cuál es el primer paso correcto?",
+      options: [
+        "Despedir inmediatamente a todo el personal del turno noche",
+        "Investigar comparando los tickets emitidos, el inventario y el efectivo de ese turno antes de sacar conclusiones",
+        "Ignorarlo si el negocio sigue siendo rentable",
+        "Contratar un guardia adicional para ese turno"
+      ],
+      correct: 1,
+      module: 6
+    },
+    {
+      question: "Una PYME solicitó un préstamo al BNF y el banco le pidió información sobre sus controles internos. ¿Por qué el banco hace esto?",
+      options: [
+        "Es un trámite burocrático sin mayor impacto en la decisión",
+        "Para verificar cuántos empleados tiene la empresa",
+        "Porque una empresa con controles sólidos gestiona mejor su dinero y tiene menor riesgo de no poder pagar",
+        "Solo para cumplir regulaciones del Banco Central"
       ],
       correct: 2,
-      module: 4
-    },
-    {
-      question: "El riesgo de fraude debe considerarse:",
-      options: [
-        "Solo en la evaluación anual del contador externo",
-        "Como parte del proceso de Evaluación de Riesgos de forma permanente",
-        "Únicamente si ya existen sospechas concretas de irregularidades",
-        "Solo en empresas grandes con muchos empleados"
-      ],
-      correct: 1,
-      module: 3
-    },
-    {
-      question: "¿Qué son los 17 principios del Marco COSO 2013?",
-      options: [
-        "Normas contables obligatorias establecidas por la SET",
-        "Conceptos fundamentales que soportan y desarrollan los 5 componentes del control interno",
-        "Leyes paraguayas específicas sobre control interno empresarial",
-        "Indicadores financieros para medir la rentabilidad"
-      ],
-      correct: 1,
-      module: 1
-    },
-    {
-      question: "¿Cuál es el objetivo principal de las evaluaciones de supervisión continua?",
-      options: [
-        "Reemplazar completamente la auditoría externa anual",
-        "Detectar y corregir deficiencias del control interno de manera oportuna",
-        "Controlar el cumplimiento del horario de trabajo del personal",
-        "Preparar los estados financieros del ejercicio"
-      ],
-      correct: 1,
-      module: 6
-    },
-    {
-      question: "En una PYME pequeña donde es difícil segregar todas las funciones, ¿cómo se pueden compensar esas limitaciones?",
-      options: [
-        "Es imposible tener control interno efectivo en empresas tan pequeñas",
-        "Mediante controles compensatorios como supervisión directa del dueño o revisiones periódicas sorpresa",
-        "Contratando siempre auditores externos certificados de forma mensual",
-        "Ignorando ese componente hasta que la empresa crezca"
-      ],
-      correct: 1,
-      module: 4
-    },
-    {
-      question: "¿Cuál de los siguientes NO es un objetivo del control interno según el Marco COSO?",
-      options: [
-        "Objetivos de operaciones (eficiencia y eficacia)",
-        "Objetivos de reporte (fiabilidad de la información)",
-        "Objetivos de cumplimiento (leyes y regulaciones)",
-        "Objetivos de maximización de ganancias"
-      ],
-      correct: 3,
-      module: 1
-    },
-    {
-      question: "Las políticas de contratación, evaluación y capacitación del personal forman parte de:",
-      options: [
-        "Actividades de Control",
-        "Entorno de Control",
-        "Evaluación de Riesgos",
-        "Actividades de Supervisión"
-      ],
-      correct: 1,
-      module: 2
-    },
-    {
-      question: "Una 'deficiencia significativa' en el control interno:",
-      options: [
-        "Se puede ignorar si el negocio muestra buenas ganancias",
-        "Merece atención de la dirección aunque no sea tan grave como una debilidad material",
-        "Solo es relevante en empresas que cotizan en bolsa",
-        "Se corrige automáticamente con el paso del tiempo"
-      ],
-      correct: 1,
-      module: 6
-    },
-    {
-      question: "¿Por qué es especialmente importante implementar control interno en las PYMES paraguayas?",
-      options: [
-        "Porque todas las PYMES en Paraguay están legalmente obligadas a tener un sistema COSO",
-        "Porque mejora la eficiencia, previene fraudes y facilita el acceso a financiamiento",
-        "Exclusivamente porque reduce la carga impositiva ante la SET",
-        "No es realmente importante para PYMES pequeñas"
-      ],
-      correct: 1,
       module: 1
     }
   ]

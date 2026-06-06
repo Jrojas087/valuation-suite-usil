@@ -29,12 +29,12 @@ function generateCertificate() {
   const pct = Math.round((score / total) * 100);
   const certId = generateCertId(name, date);
 
-  drawCertificate(name, org, score, total, pct, date, certId);
+  drawCertificate(name, org, date, certId);
   document.getElementById('cert-area').style.display = 'block';
   document.getElementById('cert-area').scrollIntoView({ behavior: 'smooth' });
 }
 
-function drawCertificate(name, org, score, total, pct, date, certId) {
+function drawCertificate(name, org, date, certId) {
   const canvas = document.getElementById('cert-canvas');
   const W = 1100, H = 780;
   canvas.width = W;
@@ -142,19 +142,8 @@ function drawCertificate(name, org, score, total, pct, date, certId) {
   ctx.font = '14px "Segoe UI", sans-serif';
   ctx.fillText('Basado en el Marco Integrado de Control Interno COSO 2013', W / 2, org ? 435 : 415);
 
-  // ── Score badge ─────────────────────────────────────────────────────────────
-  const badgeY = org ? 490 : 470;
-  const badgeW = 160, badgeH = 52, badgeX = W / 2 - badgeW / 2;
-  ctx.fillStyle = '#1B4F72';
-  roundRect(ctx, badgeX, badgeY, badgeW, badgeH, 26);
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 22px "Segoe UI", sans-serif';
-  ctx.fillText(pct + '%', W / 2, badgeY + 26);
-  ctx.font = '11px "Segoe UI", sans-serif';
-  ctx.fillText(`${score}/${total} respuestas correctas`, W / 2, badgeY + 42);
-
   // ── Date ────────────────────────────────────────────────────────────────────
-  const infoY = org ? 575 : 550;
+  const infoY = org ? 490 : 465;
   ctx.fillStyle = '#7F8C8D';
   ctx.font = '13px "Segoe UI", sans-serif';
   ctx.fillText(`Fecha de aprobación: ${date}`, W / 2, infoY);
@@ -164,18 +153,16 @@ function drawCertificate(name, org, score, total, pct, date, certId) {
   ctx.font = '11px "Segoe UI", monospace';
   ctx.fillText(`Código de verificación: ${certId}`, W / 2, infoY + 22);
 
-  // ── Signature lines ──────────────────────────────────────────────────────────
-  const sigY = H - 80;
+  // ── Signature line ───────────────────────────────────────────────────────────
+  const sigY = H - 90;
   ctx.strokeStyle = '#1B4F72';
   ctx.lineWidth = 1.5;
-  // Left sig
-  ctx.beginPath(); ctx.moveTo(160, sigY); ctx.lineTo(400, sigY); ctx.stroke();
-  ctx.fillStyle = '#5D6D7E'; ctx.font = '12px "Segoe UI", sans-serif';
+  ctx.beginPath(); ctx.moveTo(W / 2 - 180, sigY); ctx.lineTo(W / 2 + 180, sigY); ctx.stroke();
+  ctx.fillStyle = '#1B4F72'; ctx.font = 'bold 13px "Segoe UI", sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Director del Programa', 280, sigY + 16);
-  // Right sig
-  ctx.beginPath(); ctx.moveTo(700, sigY); ctx.lineTo(940, sigY); ctx.stroke();
-  ctx.fillText('Coordinación Académica', 820, sigY + 16);
+  ctx.fillText('Jorge Rojas', W / 2, sigY + 18);
+  ctx.fillStyle = '#5D6D7E'; ctx.font = '12px "Segoe UI", sans-serif';
+  ctx.fillText('Auditor Interno Certificado COSO · Instructor', W / 2, sigY + 34);
 }
 
 // ── Helper: corner ornament ──────────────────────────────────────────────────

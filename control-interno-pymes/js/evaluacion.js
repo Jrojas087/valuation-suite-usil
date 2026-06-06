@@ -116,8 +116,8 @@ function showResults(score, total, pct, passed) {
     <h2>${passed ? '🎉 ¡Felicitaciones, aprobaste!' : '📖 No alcanzaste el puntaje mínimo'}</h2>
     <p class="text-muted" style="margin-bottom:1.5rem;">
       ${passed
-        ? `Obtuviste <strong>${score} de ${total}</strong> respuestas correctas (${pct}%). El mínimo requerido es 70 % (14/20).`
-        : `Obtuviste <strong>${score} de ${total}</strong> respuestas correctas (${pct}%). Necesitas al menos 14/20 para aprobar.`
+        ? `Obtuviste <strong>${score} de ${total}</strong> respuestas correctas (${pct}%). El mínimo requerido es 70 %.`
+        : `Obtuviste <strong>${score} de ${total}</strong> respuestas correctas (${pct}%). Necesitas al menos ${Math.ceil(total * COURSE.passingScore / 100)}/${total} para aprobar.`
       }
     </p>
 
