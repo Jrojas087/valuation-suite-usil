@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Curso — Control Interno para PYMES | Paraguay</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="container">
+    <a class="navbar-brand" href="index.html">
+      <span>🛡️</span> Control Interno PYMES
+    </a>
+    <div class="navbar-links">
+      <a href="index.html">Inicio</a>
+      <a href="evaluacion.html" id="nav-eval" style="display:none;" class="btn-nav">Ir a Evaluación Final →</a>
+    </div>
+  </div>
+</nav>
+
+<div class="course-layout">
+  <!-- Sidebar -->
+  <aside class="course-sidebar">
+    <div class="sidebar-header">
+      <h3>Progreso del curso</h3>
+      <div class="sidebar-progress">
+        <div class="progress-bar"><div class="progress-fill" id="sidebar-progress" style="width:0%"></div></div>
+        <div class="sidebar-progress-text" id="sidebar-progress-text">0 de 6 módulos completados</div>
+      </div>
+    </div>
+    <div id="module-nav-list"></div>
+    <div style="padding:1.2rem;">
+      <a href="evaluacion.html" id="sidebar-eval-btn" class="btn btn-accent w-full" style="justify-content:center;display:none;">
+        🎯 Ir a Evaluación Final
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="course-main">
+    <div class="module-content-area" id="module-content">
+      <!-- Dynamic content rendered by JS -->
+    </div>
+  </main>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/curso.js"></script>
+</body>
+</html>

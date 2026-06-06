@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluación Final — Control Interno para PYMES | Paraguay</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="container">
+    <a class="navbar-brand" href="index.html"><span>🛡️</span> Control Interno PYMES</a>
+    <div class="navbar-links">
+      <a href="curso.html">← Volver al curso</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Intro screen -->
+<div id="screen-intro">
+  <div class="exam-header container">
+    <div style="font-size:3.5rem;margin-bottom:1rem;">🎯</div>
+    <h1>Evaluación Final</h1>
+    <p class="text-muted">Control Interno para PYMES — Paraguay</p>
+    <div class="exam-meta">
+      <div class="exam-meta-item">📋 20 preguntas</div>
+      <div class="exam-meta-item">✅ Puntaje mínimo: 70 % (14/20)</div>
+      <div class="exam-meta-item">📚 Cubre todos los módulos</div>
+      <div class="exam-meta-item">🔄 Intentos ilimitados</div>
+    </div>
+    <div class="alert alert-info" style="max-width:540px;margin:1.5rem auto;">
+      <span>💡</span>
+      <span>Lee cada pregunta con cuidado. Puedes revisar tus respuestas antes de enviar. Solo se envía al hacer clic en "Enviar evaluación".</span>
+    </div>
+    <button class="btn btn-accent btn-lg" onclick="startExam()">Comenzar evaluación →</button>
+    <div style="margin-top:1rem;">
+      <a href="curso.html" style="font-size:0.88rem;color:var(--text-muted);">← Repasar módulos primero</a>
+    </div>
+  </div>
+</div>
+
+<!-- Exam screen -->
+<div id="screen-exam" style="display:none;">
+  <div class="exam-progress-tracker">
+    <div class="container">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem;">
+        <span style="font-size:0.82rem;font-weight:600;color:var(--text-muted);">Progreso</span>
+        <span id="answers-count" style="font-size:0.82rem;color:var(--text-muted);">0 / 20 respondidas</span>
+      </div>
+      <div class="progress-bar" style="height:6px;">
+        <div class="progress-fill" id="exam-progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container" style="padding-top:1.5rem;padding-bottom:2rem;max-width:780px;">
+    <div id="exam-questions-list"></div>
+    <div class="exam-submit-area">
+      <div class="alert alert-info" id="incomplete-warning" style="display:none;max-width:500px;margin:0 auto 1rem;">
+        <span>⚠️</span>
+        <span>Aún tienes preguntas sin responder. ¿Deseas enviar de todas formas?</span>
+      </div>
+      <button class="btn btn-accent btn-lg" id="submit-exam-btn" onclick="submitExam()">
+        Enviar evaluación
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Results screen -->
+<div id="screen-results" style="display:none;">
+  <div class="container result-screen" id="result-content"></div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/evaluacion.js"></script>
+</body>
+</html>

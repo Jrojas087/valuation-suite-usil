@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificado — Control Interno para PYMES | Paraguay</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="certificate-page">
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="container">
+    <a class="navbar-brand" href="index.html"><span>🛡️</span> Control Interno PYMES</a>
+    <div class="navbar-links">
+      <a href="evaluacion.html">← Evaluación</a>
+      <a href="curso.html">Curso</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Locked screen -->
+<div id="screen-locked" style="display:none;">
+  <div class="container text-center" style="padding:4rem 0;">
+    <div style="font-size:3rem;margin-bottom:1rem;">🔒</div>
+    <h2>Debes aprobar la evaluación final primero</h2>
+    <p class="text-muted" style="margin-bottom:2rem;">Completa los módulos y supera la evaluación final con 70 % o más para acceder a tu certificado.</p>
+    <a href="evaluacion.html" class="btn btn-accent btn-lg">Ir a la evaluación →</a>
+  </div>
+</div>
+
+<!-- Certificate screen -->
+<div id="screen-cert" style="display:none;">
+  <div class="container">
+    <div class="exam-header" style="padding-bottom:0;">
+      <div style="font-size:3rem;margin-bottom:0.5rem;">🏆</div>
+      <h1>Tu Certificado</h1>
+      <p class="text-muted">Completa tus datos y descarga tu certificado de aprobación.</p>
+    </div>
+
+    <div class="certificate-form-area card" style="margin-bottom:2rem;">
+      <div class="form-group">
+        <label class="form-label" for="cert-name">Tu nombre completo *</label>
+        <input type="text" id="cert-name" class="form-input" placeholder="Ej: María González Rodríguez" maxlength="60">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="cert-org">Empresa / Organización (opcional)</label>
+        <input type="text" id="cert-org" class="form-input" placeholder="Ej: Distribuidora San Juan S.R.L." maxlength="60">
+      </div>
+      <button class="btn btn-primary w-full" style="justify-content:center;" onclick="generateCertificate()">
+        🎨 Generar certificado
+      </button>
+    </div>
+
+    <div id="cert-area" style="display:none;">
+      <div class="cert-wrapper">
+        <canvas id="cert-canvas"></canvas>
+      </div>
+      <div class="cert-actions">
+        <button class="btn btn-success" onclick="downloadCert()">⬇️ Descargar PNG</button>
+        <button class="btn btn-outline" onclick="printCert()">🖨️ Imprimir / PDF</button>
+        <button class="btn btn-primary" onclick="shareCert()">📤 Compartir</button>
+      </div>
+      <p class="text-center text-muted mt-2" style="font-size:0.82rem;">
+        Para guardar como PDF: usa "Imprimir → Guardar como PDF" en tu navegador.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/certificado.js"></script>
+</body>
+</html>
