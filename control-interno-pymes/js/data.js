@@ -38,7 +38,7 @@ const COURSE = {
         <p>Las PYMES representan más del <strong>90 % del tejido empresarial paraguayo</strong>. Sin controles básicos, muchas enfrentan problemas que se podrían evitar:</p>
         <ul>
           <li>Pérdidas por robo o errores que nadie detecta a tiempo</li>
-          <li>Dificultades para conseguir crédito en el BNF o la AFD</li>
+          <li>Dificultades para acceder a financiamiento bancario o a través de la AFD</li>
           <li>Multas de la DNIT por registros contables inconsistentes</li>
           <li>Ineficiencias que reducen la rentabilidad del negocio</li>
         </ul>
@@ -549,7 +549,7 @@ const COURSE = {
       module: 6
     },
     {
-      question: "Una PYME solicitó un préstamo al BNF y el banco le pidió información sobre sus controles internos. ¿Por qué el banco hace esto?",
+      question: "Una PYME solicitó un préstamo a su banco y la entidad le pidió información sobre sus controles internos. ¿Por qué el banco hace esto?",
       options: [
         "Es un trámite burocrático sin mayor impacto en la decisión",
         "Para verificar cuántos empleados tiene la empresa",
