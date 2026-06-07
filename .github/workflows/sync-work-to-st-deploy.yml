@@ -1,0 +1,32 @@
+name: Sync `work` → `st-deploy`
+
+on:
+  push:
+    branches: [ 'work' ]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync work to st-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Push current commit to branch `st-deploy`
+        run: |
+          # Force-update the remote branch `st-deploy` with the current HEAD
+          git push --force --set-upstream origin HEAD:st-deploy
+
+      - name: Output info
+        run: |
+          echo "Synchronized branch 'work' -> 'st-deploy' on origin"

@@ -202,17 +202,18 @@ def generate_onepager_pdf(
     c.setFillColor(bg)
     c.rect(0, 0, W, H, stroke=0, fill=1)
 
-    margin = 0.55 * inch
+    # aumentar márgenes superiores/inferiores para evitar solapamiento en PDF
+    margin = 0.8 * inch
     top = H - margin
     left = margin
     right = W - margin
 
-    # Header
-    rr(left, top-70, right-left, 62, r=16, fill=card2)
-    t(left+16, top-28, "ONE-PAGER EJECUTIVO — EVALUACIÓN FINANCIERA (PYG)", size=13, bold=True)
-    t(left+16, top-45, f"{onepager.institution} — {onepager.program} — {onepager.course}", size=9.5, col=muted)
-    t(left+16, top-60, f"Proyecto: {onepager.project}  |  Responsable: {onepager.responsible}", size=9.5, col=muted)
-    tr(right-16, top-45, f"Fecha: {onepager.report_date}", size=9.5, col=muted)
+    # Header (elevado ligeramente para más espacio superior)
+    rr(left, top-80, right-left, 72, r=16, fill=card2)
+    t(left+16, top-34, "ONE-PAGER EJECUTIVO — EVALUACIÓN FINANCIERA (PYG)", size=13, bold=True)
+    t(left+16, top-52, f"{onepager.institution} — {onepager.program} — {onepager.course}", size=9.5, col=muted)
+    t(left+16, top-70, f"Proyecto: {onepager.project}  |  Responsable: {onepager.responsible}", size=9.5, col=muted)
+    tr(right-16, top-52, f"Fecha: {onepager.report_date}", size=9.5, col=muted)
 
     # Verdict pill
     pill_col = good if onepager.verdict=="APROBADO" else (bad if onepager.verdict=="RECHAZADO" else warn)
@@ -222,7 +223,8 @@ def generate_onepager_pdf(
     t(right-160, top-56, f"DICTAMEN: {onepager.verdict}", size=10.5, bold=True, col=pill_col)
 
     # KPI row (6 cards)
-    kpi_y = top-150
+    # elevar KPI row un poco si la cabecera aumentó su altura
+    kpi_y = top-160
     kpi_h = 54
     gap = 10
     kpi_w = (right-left - gap*5)/6
@@ -378,11 +380,11 @@ def generate_onepager_pdf(
             c.line(xx, hy, xx, hy+hh)
             c.setDash()
 
-    # Footer
+    # Footer (más separación desde el borde)
     c.setFillColor(muted)
     c.setFont("Helvetica", 8.4)
-    c.drawString(left, margin-8, "Uso académico (MBA). Resultados dependen de supuestos y evidencia; no sustituyen due diligence.")
-    c.drawRightString(right, margin-8, "ValuationSuite USIL (PYG)")
+    c.drawString(left, margin-12, "Uso académico (MBA). Resultados dependen de supuestos y evidencia; no sustituyen due diligence.")
+    c.drawRightString(right, margin-12, "ValuationSuite USIL (PYG)")
 
     c.showPage()
     c.save()
