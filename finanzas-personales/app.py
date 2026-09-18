@@ -385,6 +385,8 @@ with tab4:
         consultant=consultant or "—",
         client=client or "—",
         report_date=date.today().isoformat(),
+        # OJO: no usar "if age" — edad=0 es un valor válido (aunque atípico) y una
+        # comprobación de verdad lo convertiría incorrectamente en None ("—").
         age=int(age) if age is not None else None,
         occupation=occupation or "—",
         dependents=int(dependents),

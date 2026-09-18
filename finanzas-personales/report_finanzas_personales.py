@@ -95,6 +95,17 @@ DISCLAIMER = (
     "regulada; valida cualquier decisión relevante con un asesor financiero certificado."
 )
 
+# El cuestionario de 10 preguntas mide sobre todo TOLERANCIA al riesgo (actitud/disposición
+# psicológica frente a la volatilidad). No sustituye un análisis de CAPACIDAD de riesgo (qué
+# tanta pérdida puede absorber el cliente según edad, estabilidad de ingresos, dependientes,
+# horizonte y fondo de emergencia) — ambos conceptos son distintos en planificación financiera
+# y deberían combinarse antes de sugerir una mezcla de inversión. Ver recomendación al docente.
+RISK_METHOD_NOTE = (
+    "Nota metodológica: este puntaje refleja principalmente la tolerancia al riesgo (actitud) del "
+    "cliente. Antes de definir una mezcla de inversión, contrasta este resultado con su capacidad de "
+    "riesgo real (edad, estabilidad de ingresos, dependientes y fondo de emergencia)."
+)
+
 
 # ----------------------------
 # TXT (para descarga rápida)
@@ -114,6 +125,7 @@ def build_text_report(r: ClientFinReport) -> str:
         f"Mezcla ilustrativa (no es recomendación de inversión): "
         f"{r.risk_alloc_fixed}% bajo riesgo/ahorro — {r.risk_alloc_variable}% mayor riesgo/crecimiento"
     )
+    lines.append(RISK_METHOD_NOTE)
     lines.append("")
     lines.append("DIAGNÓSTICO FINANCIERO RÁPIDO")
     lines.append(f"- Ingreso mensual: {fmt_pyg(r.income)}")
@@ -241,9 +253,13 @@ def generate_pdf(r: ClientFinReport) -> bytes:
     t(left+16, mid_y+mid_h-24, "Perfil de riesgo", size=11.2, bold=True)
     t(left+16, mid_y+mid_h-40, f"{r.risk_category}  —  {r.risk_score}/{r.risk_max} pts", size=10, bold=True, col=accent)
     yy = para(left+16, mid_y+mid_h-58, r.risk_description, width_chars=52)
+    yy = para(left+16, yy - 4, RISK_METHOD_NOTE, width_chars=60, size=7.6, leading=9.5, col=accent)
 
     bar_x = left+16
-    bar_y = mid_y+30
+    # La posición de la barra se ajusta al contenido de arriba (descripción + nota
+    # metodológica) para no solaparse si el texto ocupa más líneas de lo habitual,
+    # con un piso mínimo para no pegarse al borde inferior de la tarjeta.
+    bar_y = max(mid_y + 14, min(mid_y + 30, yy - 12))
     bar_w = lw-32
     bar_h = 14
     c.setFillColor(colors.Color(1, 1, 1, alpha=0.05))
@@ -275,18 +291,27 @@ def generate_pdf(r: ClientFinReport) -> bytes:
         ry -= 15
 
     # Bottom card: plan de acción
-    bot_y = mid_y - 220
-    bot_h = 200
+    # Usa todo el espacio vertical libre entre las tarjetas del medio y el pie de
+    # página (antes quedaba una franja en blanco y una tarjeta de altura fija que
+    # truncaba planes de acción largos sin avisar).
+    footer_reserved = 34  # línea de marca + disclaimer (ver footer más abajo)
+    bot_top = mid_y - 20
+    bot_y = margin + footer_reserved
+    bot_h = bot_top - bot_y
     rr(left, bot_y, right-left, bot_h, r=18, fill=card)
     t(left+16, bot_y+bot_h-24, "Plan de acción sugerido", size=11.2, bold=True)
     yy = bot_y+bot_h-44
-    for item in r.action_plan:
+    truncated = False
+    for idx, item in enumerate(r.action_plan):
         for ln in wrap(item, 108):
             t(left+20, yy, ln, size=9.2, col=muted)
             yy -= 12.5
         yy -= 2
-        if yy < bot_y + 14:
+        if yy < bot_y + 24 and idx < len(r.action_plan) - 1:
+            truncated = True
             break
+    if truncated:
+        t(left+20, bot_y+12, "(continúa en el reporte TXT — ver ítems adicionales)", size=8.2, col=accent)
 
     # Footer
     c.setFillColor(muted)
