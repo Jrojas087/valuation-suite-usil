@@ -208,6 +208,18 @@ def generate_pdf(r: ClientFinReport) -> bytes:
             yy -= leading
         return yy
 
+    def ellipsize(s, max_width, size=9.5, bold=False):
+        # Trunca con "…" el texto que no entra en max_width (puntos), en vez de
+        # dejar que invada lo que está dibujado a la derecha (fecha, píldora).
+        font = "Helvetica-Bold" if bold else "Helvetica"
+        if c.stringWidth(s, font, size) <= max_width:
+            return s
+        ell = "…"
+        trimmed = s
+        while trimmed and c.stringWidth(trimmed + ell, font, size) > max_width:
+            trimmed = trimmed[:-1]
+        return (trimmed.rstrip() + ell) if trimmed else ell
+
     # Background
     c.setFillColor(bg)
     c.rect(0, 0, W, H, stroke=0, fill=1)
@@ -218,12 +230,35 @@ def generate_pdf(r: ClientFinReport) -> bytes:
     right = W - margin
 
     # Header
-    rr(left, top-70, right-left, 62, r=16, fill=card2)
+    # Altura ampliada (62 -> 80) para poder mostrar el objetivo del cliente en una
+    # línea propia; kpi_y se corre la misma cantidad (18pt) más abajo para que el
+    # espaciado con la fila de KPIs no cambie.
+    header_h = 80
+    rr(left, top-88, right-left, header_h, r=16, fill=card2)
     t(left+16, top-28, "DIAGNÓSTICO DE FINANZAS PERSONALES — REPORTE DE CONSULTORÍA", size=12.5, bold=True)
     edad = "—" if r.age is None else str(r.age)
-    t(left+16, top-45, f"Consultor/a: {r.consultant}  |  Cliente: {r.client}", size=9.5, col=muted)
-    t(left+16, top-60, f"Edad: {edad}  |  Ocupación: {r.occupation}  |  Dependientes: {r.dependents}", size=9.5, col=muted)
-    tr(right-16, top-45, f"Fecha: {r.report_date}", size=9.5, col=muted)
+
+    # La píldora de salud financiera (dibujada más abajo) ocupa una franja vertical
+    # que cruza tanto la fila 1 (Consultor/a | Cliente) como la fila 2 (Edad |
+    # Ocupación | Dependientes), así que ambas deben frenar antes de su borde
+    # izquierdo, no solo antes del texto de la fecha.
+    pill_left_x = right-210
+    date_str = f"Fecha: {r.report_date}"
+    date_w = c.stringWidth(date_str, "Helvetica", 9.5)
+    date_start_x = right-16 - date_w
+    line1_max_w = min(date_start_x - 12, pill_left_x - 10) - (left+16)
+    line1 = ellipsize(f"Consultor/a: {r.consultant}  |  Cliente: {r.client}", line1_max_w, size=9.5)
+    t(left+16, top-45, line1, size=9.5, col=muted)
+    tr(right-16, top-45, date_str, size=9.5, col=muted)
+
+    line2_max_w = (pill_left_x - 10) - (left+16)
+    line2 = ellipsize(
+        f"Edad: {edad}  |  Ocupación: {r.occupation}  |  Dependientes: {r.dependents}", line2_max_w, size=9.5,
+    )
+    t(left+16, top-60, line2, size=9.5, col=muted)
+
+    line3 = ellipsize(f"Objetivo: {r.objective}", (right-16) - (left+16), size=9.5)
+    t(left+16, top-75, line3, size=9.5, col=accent)
 
     # Health pill
     pill_col = good if r.health_score >= 6 else (bad if r.health_score <= 3 else warn)
@@ -233,7 +268,7 @@ def generate_pdf(r: ClientFinReport) -> bytes:
     t(right-200, top-56, f"SALUD FINANCIERA: {r.health_label}", size=9.6, bold=True, col=pill_col)
 
     # KPI row (4 cards)
-    kpi_y = top-150
+    kpi_y = top-168
     kpi_h = 58
     gap = 10
     kpi_w = (right-left - gap*3)/4
@@ -247,10 +282,11 @@ def generate_pdf(r: ClientFinReport) -> bytes:
 
     savings_val = "—" if r.savings_rating.key == "na" else fmt_pct(r.savings_rate)
     dti_val = "—" if r.dti_rating.key == "na" else fmt_pct(r.dti)
+    emergency_val = "—" if r.emergency_rating.key == "na" else f"{r.emergency_months:.1f} meses"
     kpi(0, "Excedente antes de ahorro", fmt_pyg(r.cashflow), r.cashflow_rating)
     kpi(1, "Tasa de ahorro", savings_val, r.savings_rating)
     kpi(2, "Endeudamiento (DTI)", dti_val, r.dti_rating)
-    kpi(3, "Fondo de emergencia", f"{r.emergency_months:.1f} meses", r.emergency_rating)
+    kpi(3, "Fondo de emergencia", emergency_val, r.emergency_rating)
 
     # Mid cards: perfil de riesgo (izq) + diagnóstico (der)
     mid_y = kpi_y - 210
@@ -267,12 +303,23 @@ def generate_pdf(r: ClientFinReport) -> bytes:
     yy = para(left+16, yy - 4, RISK_METHOD_NOTE, width_chars=60, size=7.6, leading=9.5, col=accent)
 
     bar_x = left+16
+    bar_h = 14
+    caption_text = (
+        f"Mezcla ilustrativa: {r.risk_alloc_fixed}% bajo riesgo / {r.risk_alloc_variable}% mayor riesgo "
+        f"(no es recomendación)"
+    )
+    caption_leading = 9.2
+    caption_lines = wrap(caption_text, 58)
+    # Espacio que necesita la leyenda debajo de la barra: si no entra en una sola
+    # línea (tarjeta angosta / texto más largo de lo habitual), reserva 2 líneas en
+    # vez de dejar que se salga de la tarjeta.
+    caption_block_h = 12 + (len(caption_lines) - 1) * caption_leading
     # La posición de la barra se ajusta al contenido de arriba (descripción + nota
     # metodológica) para no solaparse si el texto ocupa más líneas de lo habitual,
-    # con un piso mínimo para no pegarse al borde inferior de la tarjeta.
-    bar_y = max(mid_y + 14, min(mid_y + 30, yy - 12))
+    # y deja piso suficiente para que la leyenda (una o dos líneas) no se salga por
+    # abajo de la tarjeta.
+    bar_y = max(mid_y + 6 + caption_block_h, min(mid_y + 30, yy - 12))
     bar_w = lw-32
-    bar_h = 14
     c.setFillColor(colors.Color(1, 1, 1, alpha=0.05))
     c.rect(bar_x, bar_y, bar_w, bar_h, stroke=0, fill=1)
     seg1 = bar_w * (r.risk_alloc_fixed/100.0)
@@ -280,7 +327,10 @@ def generate_pdf(r: ClientFinReport) -> bytes:
     c.rect(bar_x, bar_y, seg1, bar_h, stroke=0, fill=1)
     c.setFillColor(colors.Color(warn.red, warn.green, warn.blue, alpha=0.55))
     c.rect(bar_x+seg1, bar_y, bar_w-seg1, bar_h, stroke=0, fill=1)
-    t(left+16, bar_y-12, f"Mezcla ilustrativa: {r.risk_alloc_fixed}% bajo riesgo / {r.risk_alloc_variable}% mayor riesgo (no es recomendación)", size=7.6, col=muted)
+    cap_y = bar_y - 12
+    for ln in caption_lines:
+        t(left+16, cap_y, ln, size=7.6, col=muted)
+        cap_y -= caption_leading
 
     # Derecha: diagnóstico financiero
     rx = left+lw+16

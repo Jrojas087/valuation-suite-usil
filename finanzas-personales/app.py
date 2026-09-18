@@ -99,7 +99,11 @@ def rate_dti(dti: float, income: float) -> rep.Rating:
         return rep.Rating("warn", "Moderado", "🟡")
     return rep.Rating("good", "Bajo", "🟢")
 
-def rate_emergency(months: float) -> rep.Rating:
+def rate_emergency(months: float, total_expenses: float) -> rep.Rating:
+    # Igual que DTI/ahorro con ingreso=0: si no hay gastos totales con qué calcular
+    # la cobertura, 0.0 no es "insuficiente" sino simplemente "no calculable".
+    if total_expenses <= 0:
+        return rep.Rating("na", "No calculable", "⚪")
     if months < 3:
         return rep.Rating("bad", "Insuficiente", "🔴")
     if months < 6:
@@ -315,7 +319,7 @@ with tab2:
     cashflow_rating = rate_cashflow(cashflow, income)
     savings_rating = rate_savings(savings_rate, income)
     dti_rating = rate_dti(dti, income)
-    emergency_rating = rate_emergency(emergency_months)
+    emergency_rating = rate_emergency(emergency_months, total_expenses)
 
     st.markdown("")
     c1, c2, c3, c4 = st.columns(4, gap="medium")
@@ -377,29 +381,84 @@ with tab3:
             "⚪ Antes que nada: completá el ingreso mensual del cliente. Sin ese dato no se puede calcular "
             "la tasa de ahorro ni el endeudamiento (quedan marcados como \"No calculable\")."
         )
-    if cashflow < 0:
+    if cashflow_rating.key == "bad":
         action_plan.append(
             "🔴 Prioridad 1: cerrar el déficit mensual. Los gastos superan los ingresos; antes de ahorrar o "
             "invertir, ajusta el presupuesto (reduce gastos variables o incrementa ingresos)."
         )
-    if emergency_months < 3:
+    # Fondo de emergencia: se usa el rating (no el número crudo de meses) para no
+    # tratar un "No calculable" (gastos totales = 0) como si fuera insuficiente.
+    if emergency_rating.key == "bad":
         action_plan.append(
             f"🔴 Prioridad {len(action_plan)+1}: construir un fondo de emergencia de al menos 3 a 6 meses de "
             f"gastos (actualmente cubre {emergency_months:.1f} meses)."
         )
-    if dti > 0.35:
+    elif emergency_rating.key == "warn":
         action_plan.append(
-            f"🟡 Prioridad {len(action_plan)+1}: reducir el nivel de endeudamiento (actualmente "
+            f"🟡 Prioridad {len(action_plan)+1}: seguir reforzando el fondo de emergencia hasta cubrir 6 meses "
+            f"de gastos (actualmente cubre {emergency_months:.1f} meses, cobertura parcial)."
+        )
+    if dti_rating.key == "bad":
+        action_plan.append(
+            f"🔴 Prioridad {len(action_plan)+1}: reducir el nivel de endeudamiento (actualmente "
             f"{dti*100:.0f}% del ingreso se destina a cuotas de deuda). Prioriza cancelar las deudas con mayor "
             f"tasa de interés."
         )
-    if savings_rate < 0.10 and cashflow >= 0:
+    elif dti_rating.key == "warn":
         action_plan.append(
-            f"🟡 Prioridad {len(action_plan)+1}: aumentar la tasa de ahorro mensual (actualmente "
+            f"🟡 Prioridad {len(action_plan)+1}: el endeudamiento es moderado ({dti*100:.0f}% del ingreso). "
+            f"Evita tomar nuevas deudas y buscá bajarlo hacia el 20% o menos."
+        )
+    if savings_rating.key == "bad" and cashflow >= 0:
+        action_plan.append(
+            f"🔴 Prioridad {len(action_plan)+1}: aumentar la tasa de ahorro mensual (actualmente "
             f"{savings_rate*100:.0f}%). Automatiza un porcentaje del ingreso apenas se recibe."
         )
-    if not action_plan:
+    elif savings_rating.key == "warn" and cashflow >= 0:
+        action_plan.append(
+            f"🟡 Prioridad {len(action_plan)+1}: la tasa de ahorro es media ({savings_rate*100:.0f}%). Buscá "
+            f"subirla gradualmente hacia 20% o más, por ejemplo automatizando un aumento cada vez que suba el "
+            f"ingreso."
+        )
+
+    # El mensaje genérico de "todo en orden" solo debe aparecer cuando ningún
+    # indicador quedó en rojo ni en amarillo (verde o "no calculable" están bien).
+    all_indicators_ok = (
+        cashflow_rating.key in ("good", "na")
+        and emergency_rating.key in ("good", "na")
+        and dti_rating.key in ("good", "na")
+        and savings_rating.key in ("good", "na")
+    )
+    if not action_plan and all_indicators_ok:
         action_plan.append("🟢 Buen punto de partida: los indicadores básicos están en orden. El siguiente paso es definir metas concretas de mediano y largo plazo.")
+
+    # Conecta el objetivo elegido en el sidebar con una recomendación concreta.
+    if objective == "Reducir deudas":
+        if dti_rating.key == "good":
+            action_plan.append(
+                "🎯 Objetivo del cliente — Reducir deudas: el endeudamiento (DTI) ya está en zona saludable, "
+                "así que en vez de solo \"pagar más\" conviene revisar las tasas de interés de las deudas "
+                "vigentes (refinanciar o consolidar las más caras) para liberar excedente mensual."
+            )
+        else:
+            action_plan.append(
+                "🎯 Objetivo del cliente — Reducir deudas: seguí el plan de pago de deudas indicado arriba "
+                "antes de sumar compromisos financieros nuevos."
+            )
+    elif objective == "Empezar a invertir":
+        if emergency_rating.key in ("bad", "na"):
+            action_plan.append(
+                "🎯 Objetivo del cliente — Empezar a invertir: antes de destinar dinero a inversiones conviene "
+                "resolver el fondo de emergencia (hoy insuficiente o no calculable); invertir sin ese colchón "
+                "expone al cliente a tener que vender en mal momento ante un imprevisto."
+            )
+        else:
+            action_plan.append(
+                "🎯 Objetivo del cliente — Empezar a invertir: con el fondo de emergencia en un nivel "
+                "adecuado, el siguiente paso es definir la mezcla de inversión según el perfil de riesgo del "
+                "cliente."
+            )
+
     if risk_complete:
         action_plan.append(
             f"📈 Según el perfil de riesgo ({risk_category}), evalúa junto al cliente una mezcla ilustrativa acorde "
