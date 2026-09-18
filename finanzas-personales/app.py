@@ -109,11 +109,26 @@ def pill_html(rating: rep.Rating) -> str:
 # Sidebar — Identificación
 # ============================================================
 st.sidebar.header("🧩 Identificación")
-consultant = st.sidebar.text_input("Nombre del consultor/a (alumno/a)", "")
-client = st.sidebar.text_input("Nombre del cliente", "")
-age = st.sidebar.number_input("Edad del cliente", min_value=0, max_value=110, value=35, step=1)
-occupation = st.sidebar.text_input("Ocupación", "")
-dependents = st.sidebar.number_input("N° de dependientes", min_value=0, max_value=20, value=0, step=1)
+st.sidebar.caption("Completalo al inicio de la sesión con tu cliente; aparece en el reporte final.")
+consultant = st.sidebar.text_input(
+    "Nombre del consultor/a (alumno/a)", "",
+    placeholder="Ej: María Gómez",
+    help="Tu nombre como alumno/a a cargo de esta consultoría. Aparece en el reporte.",
+)
+client = st.sidebar.text_input(
+    "Nombre del cliente", "",
+    placeholder="Ej: Juan Pérez",
+    help="Nombre del cliente que estás asesorando. Aparece en el reporte.",
+)
+age = st.sidebar.number_input(
+    "Edad del cliente", min_value=0, max_value=110, value=35, step=1,
+    help="Usada como referencia para contextualizar el perfil de riesgo y el horizonte de planificación.",
+)
+occupation = st.sidebar.text_input("Ocupación", "", placeholder="Ej: Comerciante, docente, empleado/a")
+dependents = st.sidebar.number_input(
+    "N° de dependientes", min_value=0, max_value=20, value=0, step=1,
+    help="Personas que dependen económicamente del cliente (hijos/as, familiares a cargo, etc.).",
+)
 objective = st.sidebar.selectbox(
     "Objetivo principal de la consulta",
     [
@@ -125,8 +140,9 @@ objective = st.sidebar.selectbox(
         "Empezar a invertir",
         "Otro",
     ],
+    help="Elegí el motivo principal por el que el cliente busca esta consultoría; guía el plan de acción.",
 )
-st.sidebar.caption("No se guarda ningún dato: todo vive en esta sesión hasta que generes el reporte.")
+st.sidebar.caption("🔒 No se guarda ningún dato: todo vive en esta sesión hasta que generes el reporte.")
 
 # ============================================================
 # Preguntas del test de perfil de riesgo
@@ -172,15 +188,27 @@ with tab1:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("### Cuestionario de tolerancia al riesgo")
     st.markdown(
-        "<div class='small'>Lee cada afirmación junto a tu cliente y marca qué tan de acuerdo está. "
-        "No hay respuestas correctas o incorrectas.</div>",
+        "<div class='small'>Leé cada afirmación en voz alta junto a tu cliente y marcá qué tan de acuerdo "
+        "está con ella. No hay respuestas correctas o incorrectas: la idea es capturar su actitud real "
+        "frente al riesgo, no lo que \"debería\" responder.</div>",
         unsafe_allow_html=True,
     )
+    with st.expander("ℹ️ Cómo usar la escala (mostrar antes de empezar)"):
+        st.write(
+            "La escala va de **Totalmente en desacuerdo** a **Totalmente de acuerdo**. "
+            "Si el cliente duda, sugerile elegir **Neutral** y seguir adelante; se puede volver a cualquier "
+            "pregunta antes de pasar a la pestaña de Diagnóstico."
+        )
     answers = []
     for i, (question, invert) in enumerate(RISK_QUESTIONS, start=1):
+        if i == 1:
+            st.markdown("#### Bloque 1 · Actitud frente al riesgo y horizonte de inversión")
+        if i == 6:
+            st.markdown("")
+            st.markdown("#### Bloque 2 · Reacciones emocionales y experiencia previa")
         st.markdown(f"**{i}. {question}**")
         choice = st.select_slider(
-            f"risk_q_{i}", options=LIKERT_LABELS, value="Neutral", key=f"risk_q_{i}", label_visibility="collapsed"
+            f"Pregunta {i}", options=LIKERT_LABELS, value="Neutral", key=f"risk_q_{i}", label_visibility="collapsed"
         )
         raw = LIKERT_LABELS.index(choice) + 1  # 1..5
         score = (6 - raw) if invert else raw
@@ -210,16 +238,40 @@ with tab1:
 with tab2:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("### Datos financieros mensuales del cliente (Gs.)")
+    st.caption("Pedile al cliente montos aproximados; no hace falta precisión al peso, con un estimado alcanza.")
     colA, colB = st.columns(2)
     with colA:
-        income = st.number_input("Ingreso mensual neto (todas las fuentes)", min_value=0.0, value=6_000_000.0, step=100_000.0)
-        fixed_expenses = st.number_input("Gastos fijos mensuales (vivienda, servicios, seguros)", min_value=0.0, value=2_000_000.0, step=50_000.0)
-        variable_expenses = st.number_input("Gastos variables mensuales (comida, transporte, ocio)", min_value=0.0, value=1_500_000.0, step=50_000.0)
+        st.markdown("**Ingresos y gastos**")
+        income = st.number_input(
+            "Ingreso mensual neto (todas las fuentes)", min_value=0.0, value=6_000_000.0, step=100_000.0,
+            help="Sueldo neto, honorarios, rentas u otros ingresos regulares, sumados.",
+        )
+        fixed_expenses = st.number_input(
+            "Gastos fijos mensuales (vivienda, servicios, seguros)", min_value=0.0, value=2_000_000.0, step=50_000.0,
+            help="Alquiler o cuota de vivienda, luz, agua, internet, seguros y otros gastos que no varían mes a mes.",
+        )
+        variable_expenses = st.number_input(
+            "Gastos variables mensuales (comida, transporte, ocio)", min_value=0.0, value=1_500_000.0, step=50_000.0,
+            help="Supermercado, combustible o pasajes, salidas y otros gastos que cambian de mes a mes.",
+        )
     with colB:
-        debt_payment = st.number_input("Cuota mensual total de deudas (tarjetas, préstamos)", min_value=0.0, value=500_000.0, step=50_000.0)
-        savings_monthly = st.number_input("Ahorro/inversión mensual actual", min_value=0.0, value=500_000.0, step=50_000.0)
-        emergency_fund = st.number_input("Fondo de emergencia actual (monto acumulado)", min_value=0.0, value=1_000_000.0, step=100_000.0)
-    net_worth_input = st.number_input("Patrimonio neto aproximado (activos − pasivos, opcional)", value=0.0, step=100_000.0)
+        st.markdown("**Deuda, ahorro y colchón**")
+        debt_payment = st.number_input(
+            "Cuota mensual total de deudas (tarjetas, préstamos)", min_value=0.0, value=500_000.0, step=50_000.0,
+            help="Suma de todas las cuotas mensuales: tarjetas de crédito, préstamos personales, prendarios, etc.",
+        )
+        savings_monthly = st.number_input(
+            "Ahorro/inversión mensual actual", min_value=0.0, value=500_000.0, step=50_000.0,
+            help="Lo que el cliente realmente aparta o invierte cada mes, no lo que le \"sobra\".",
+        )
+        emergency_fund = st.number_input(
+            "Fondo de emergencia actual (monto acumulado)", min_value=0.0, value=1_000_000.0, step=100_000.0,
+            help="Ahorros líquidos y disponibles de inmediato ante un imprevisto (no incluye inversiones de largo plazo).",
+        )
+    net_worth_input = st.number_input(
+        "Patrimonio neto aproximado (activos − pasivos, opcional)", value=0.0, step=100_000.0,
+        help="Opcional. Suma de todo lo que el cliente posee (ahorros, propiedades, vehículos) menos sus deudas totales.",
+    )
     net_worth = net_worth_input if net_worth_input != 0.0 else None
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -236,13 +288,25 @@ with tab2:
 
     st.markdown("")
     c1, c2, c3, c4 = st.columns(4, gap="medium")
-    c1.metric("Flujo de caja mensual", fmt_pyg(cashflow))
+    c1.metric(
+        "Flujo de caja mensual", fmt_pyg(cashflow),
+        help="Ingreso menos todos los gastos y cuotas de deuda. Si es negativo, el cliente gasta más de lo que gana.",
+    )
     c1.markdown(pill_html(cashflow_rating), unsafe_allow_html=True)
-    c2.metric("Tasa de ahorro", fmt_pct(savings_rate))
+    c2.metric(
+        "Tasa de ahorro", fmt_pct(savings_rate),
+        help="Ahorro mensual como % del ingreso. Referencia usada en esta app: menos de 10% es bajo, 10-20% medio, 20% o más se considera bueno.",
+    )
     c2.markdown(pill_html(savings_rating), unsafe_allow_html=True)
-    c3.metric("Endeudamiento (DTI)", fmt_pct(dti))
+    c3.metric(
+        "Endeudamiento (DTI)", fmt_pct(dti),
+        help="Cuotas de deuda como % del ingreso (Debt-to-Income). Cuanto más alto, menos margen financiero.",
+    )
     c3.markdown(pill_html(dti_rating), unsafe_allow_html=True)
-    c4.metric("Fondo de emergencia", f"{emergency_months:.1f} meses")
+    c4.metric(
+        "Fondo de emergencia", f"{emergency_months:.1f} meses",
+        help="Cuántos meses de gastos totales cubre el fondo de emergencia actual ante una pérdida de ingresos.",
+    )
     c4.markdown(pill_html(emergency_rating), unsafe_allow_html=True)
 
     health_points = sum(2 if r.key == "good" else (1 if r.key == "warn" else 0) for r in [cashflow_rating, savings_rating, dti_rating, emergency_rating])
@@ -306,11 +370,22 @@ with tab4:
     )
     st.markdown("</div>", unsafe_allow_html=True)
 
+    missing_fields = []
+    if not consultant.strip():
+        missing_fields.append("nombre del consultor/a")
+    if not client.strip():
+        missing_fields.append("nombre del cliente")
+    if missing_fields:
+        st.warning(
+            "⚠️ Falta completar en el panel lateral: " + " y ".join(missing_fields) + ". "
+            "Podés descargar igual, pero el reporte quedará sin esa identificación."
+        )
+
     report = rep.ClientFinReport(
         consultant=consultant or "—",
         client=client or "—",
         report_date=date.today().isoformat(),
-        age=int(age) if age else None,
+        age=int(age) if age is not None else None,
         occupation=occupation or "—",
         dependents=int(dependents),
         objective=objective,
@@ -360,6 +435,16 @@ with tab4:
         )
     else:
         st.info("Para exportar PDF, agrega `reportlab` a requirements.txt.")
+
+st.sidebar.divider()
+st.sidebar.subheader("📶 Progreso de la consultoría")
+st.sidebar.write(f"1️⃣ Perfil de riesgo: **{risk_category}** ({risk_score}/{risk_max})")
+st.sidebar.write(f"2️⃣ Diagnóstico financiero: **{health_label}** ({health_points}/{health_max})")
+st.sidebar.write(f"3️⃣ Plan de acción: **{len(action_plan)}** recomendación(es)")
+if consultant.strip() and client.strip():
+    st.sidebar.write("4️⃣ Reporte: ✅ listo para descargar")
+else:
+    st.sidebar.write("4️⃣ Reporte: ⚠️ completá nombre de consultor/a y cliente")
 
 st.markdown(
     "<div class='small' style='text-align:center; margin-top:8px;'>Uso educativo — Diplomado de Finanzas "
