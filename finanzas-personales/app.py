@@ -290,11 +290,20 @@ with tab2:
             "Fondo de emergencia actual (monto acumulado)", min_value=0.0, value=1_000_000.0, step=100_000.0,
             help="Ahorros líquidos y disponibles de inmediato ante un imprevisto (no incluye inversiones de largo plazo).",
         )
+    net_worth_unknown = st.checkbox(
+        "No cuento con este dato de patrimonio neto (dejar sin informar)",
+        help="Marcá esta casilla si el cliente no sabe o no quiere compartir su patrimonio neto. "
+        "Así se distingue de un patrimonio neto real de Gs. 0 (activos = pasivos).",
+    )
     net_worth_input = st.number_input(
         "Patrimonio neto aproximado (activos − pasivos, opcional)", value=0.0, step=100_000.0,
         help="Opcional. Suma de todo lo que el cliente posee (ahorros, propiedades, vehículos) menos sus deudas totales.",
+        disabled=net_worth_unknown,
     )
-    net_worth = net_worth_input if net_worth_input != 0.0 else None
+    # OJO: no usar "net_worth_input if net_worth_input != 0.0 else None" — eso hacía
+    # indistinguible un patrimonio neto real de Gs. 0 de "el dato no se cargó". Ahora
+    # "no informado" se decide explícitamente con el checkbox de arriba.
+    net_worth = None if net_worth_unknown else net_worth_input
     st.markdown("</div>", unsafe_allow_html=True)
 
     total_expenses = fixed_expenses + variable_expenses + debt_payment
@@ -414,8 +423,11 @@ with tab4:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("### Generar reporte")
     st.write(
-        "Revisa que los datos de las pestañas anteriores estén completos y luego descarga el reporte "
-        "para entregar a tu cliente. No se guarda ninguna copia: solo se genera al hacer clic."
+        "Revisá que los datos de las pestañas anteriores estén completos. Cuando estés listo/a, "
+        "presioná \"Generar reporte\" para armar el documento con los valores actuales; recién ahí "
+        "se habilitan los botones de descarga (no se generan solos en cada cambio de pestaña o "
+        "casilla). No se guarda ninguna copia en el servidor ni en disco: el reporte generado vive "
+        "solo en esta sesión del navegador, hasta que la cerrés o recargués la página."
     )
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -440,75 +452,105 @@ with tab4:
         "(no son los montos de ejemplo precargados por la app).",
     )
     if not confirm_real_data:
-        st.warning("☝️ Marcá la casilla de arriba para habilitar la descarga del reporte.")
+        st.warning("☝️ Marcá la casilla de arriba para habilitar la generación del reporte.")
 
     if confirm_real_data:
-        report = rep.ClientFinReport(
-            consultant=consultant or "—",
-            client=client or "—",
-            report_date=date.today().isoformat(),
-            # OJO: no usar "if age" — edad=0 es un valor válido (aunque atípico) y una
-            # comprobación de verdad lo convertiría incorrectamente en None ("—").
-            age=int(age) if age is not None else None,
-            occupation=occupation or "—",
-            dependents=int(dependents),
-            objective=objective,
-            risk_score=risk_score,
-            risk_max=risk_max,
-            risk_category=risk_category,
-            risk_description=risk_desc,
-            risk_alloc_fixed=alloc_fixed,
-            risk_alloc_variable=alloc_variable,
-            income=float(income),
-            fixed_expenses=float(fixed_expenses),
-            variable_expenses=float(variable_expenses),
-            debt_payment=float(debt_payment),
-            savings_monthly=float(savings_monthly),
-            emergency_fund=float(emergency_fund),
-            net_worth=float(net_worth) if net_worth is not None else None,
-            total_expenses=float(total_expenses),
-            cashflow=float(cashflow),
-            savings_rate=float(savings_rate),
-            dti=float(dti),
-            emergency_months=float(emergency_months),
-            cashflow_rating=cashflow_rating,
-            savings_rating=savings_rating,
-            dti_rating=dti_rating,
-            emergency_rating=emergency_rating,
-            health_score=int(health_points),
-            health_max=int(health_max),
-            health_label=health_label,
-            action_plan=action_plan,
+        # Huella de los datos que entran al reporte: sirve para avisar si el alumno
+        # generó el reporte y después siguió tocando inputs, sin recalcular nada en
+        # cada rerun (eso es justamente lo que este botón evita).
+        report_inputs_snapshot = (
+            consultant, client, age, occupation, dependents, objective,
+            risk_complete, risk_score, risk_max, risk_category, risk_desc,
+            alloc_fixed, alloc_variable,
+            income, fixed_expenses, variable_expenses, debt_payment,
+            savings_monthly, emergency_fund, net_worth,
+            tuple(action_plan),
         )
 
-        txt_report = rep.build_text_report(report)
-        st.download_button(
-            "⬇️ Descargar reporte (TXT)",
-            data=txt_report.encode("utf-8"),
-            file_name="diagnostico_finanzas_personales.txt",
-            mime="text/plain",
-        )
-
-        if rep.REPORTLAB_OK:
-            pdf_bytes = rep.generate_pdf(report)
-            st.download_button(
-                "⬇️ Descargar reporte (PDF)",
-                data=pdf_bytes,
-                file_name="diagnostico_finanzas_personales.pdf",
-                mime="application/pdf",
+        if st.button("🔄 Generar reporte con los datos actuales"):
+            report = rep.ClientFinReport(
+                consultant=consultant or "—",
+                client=client or "—",
+                report_date=date.today().isoformat(),
+                # OJO: no usar "if age" — edad=0 es un valor válido (aunque atípico) y una
+                # comprobación de verdad lo convertiría incorrectamente en None ("—").
+                age=int(age) if age is not None else None,
+                occupation=occupation or "—",
+                dependents=int(dependents),
+                objective=objective,
+                risk_score=risk_score,
+                risk_max=risk_max,
+                risk_category=risk_category,
+                risk_description=risk_desc,
+                risk_alloc_fixed=alloc_fixed,
+                risk_alloc_variable=alloc_variable,
+                income=float(income),
+                fixed_expenses=float(fixed_expenses),
+                variable_expenses=float(variable_expenses),
+                debt_payment=float(debt_payment),
+                savings_monthly=float(savings_monthly),
+                emergency_fund=float(emergency_fund),
+                net_worth=float(net_worth) if net_worth is not None else None,
+                total_expenses=float(total_expenses),
+                cashflow=float(cashflow),
+                savings_rate=float(savings_rate),
+                dti=float(dti),
+                emergency_months=float(emergency_months),
+                cashflow_rating=cashflow_rating,
+                savings_rating=savings_rating,
+                dti_rating=dti_rating,
+                emergency_rating=emergency_rating,
+                health_score=int(health_points),
+                health_max=int(health_max),
+                health_label=health_label,
+                action_plan=action_plan,
             )
+            # Recién acá se calculan el TXT y el PDF — no en cada rerun del script.
+            st.session_state["fp_report_txt"] = rep.build_text_report(report)
+            st.session_state["fp_report_pdf"] = (
+                rep.generate_pdf(report) if rep.REPORTLAB_OK else None
+            )
+            st.session_state["fp_report_snapshot"] = report_inputs_snapshot
+
+        report_ready = "fp_report_txt" in st.session_state
+        if report_ready and st.session_state.get("fp_report_snapshot") != report_inputs_snapshot:
+            st.info(
+                "ℹ️ Los datos cambiaron desde la última vez que generaste el reporte. Volvé a "
+                "presionar \"Generar reporte\" para que la descarga refleje los valores actuales."
+            )
+
+        if report_ready:
+            st.download_button(
+                "⬇️ Descargar reporte (TXT)",
+                data=st.session_state["fp_report_txt"].encode("utf-8"),
+                file_name="diagnostico_finanzas_personales.txt",
+                mime="text/plain",
+            )
+            if st.session_state.get("fp_report_pdf") is not None:
+                st.download_button(
+                    "⬇️ Descargar reporte (PDF)",
+                    data=st.session_state["fp_report_pdf"],
+                    file_name="diagnostico_finanzas_personales.pdf",
+                    mime="application/pdf",
+                )
+            elif not rep.REPORTLAB_OK:
+                st.info("Para exportar PDF, agrega `reportlab` a requirements.txt.")
         else:
-            st.info("Para exportar PDF, agrega `reportlab` a requirements.txt.")
+            st.info(
+                "Presioná \"🔄 Generar reporte con los datos actuales\" para habilitar la descarga."
+            )
 
 st.sidebar.divider()
 st.sidebar.subheader("📶 Progreso de la consultoría")
 st.sidebar.write(f"1️⃣ Perfil de riesgo: **{risk_category}** ({risk_score}/{risk_max})")
 st.sidebar.write(f"2️⃣ Diagnóstico financiero: **{health_label}** ({health_points}/{health_max})")
 st.sidebar.write(f"3️⃣ Plan de acción: **{len(action_plan)}** recomendación(es)")
-if confirm_real_data:
-    st.sidebar.write("4️⃣ Reporte: ✅ listo para descargar")
+if "fp_report_txt" in st.session_state:
+    st.sidebar.write("4️⃣ Reporte: ✅ generado — listo para descargar")
+elif confirm_real_data:
+    st.sidebar.write("4️⃣ Reporte: ⚠️ presioná \"Generar reporte\" en la pestaña Reporte")
 else:
-    st.sidebar.write("4️⃣ Reporte: ⚠️ confirmá los datos en la pestaña Reporte para habilitar la descarga")
+    st.sidebar.write("4️⃣ Reporte: ⚠️ confirmá los datos en la pestaña Reporte para generarlo")
 
 st.markdown(
     "<div class='small' style='text-align:center; margin-top:8px;'>Uso educativo — Diplomado de Finanzas "
