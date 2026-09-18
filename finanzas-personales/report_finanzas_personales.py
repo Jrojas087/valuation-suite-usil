@@ -137,10 +137,19 @@ def build_text_report(r: ClientFinReport) -> str:
         lines.append(f"- Patrimonio neto aproximado: {fmt_pyg(r.net_worth)}")
     lines.append("")
     lines.append("Indicadores")
-    lines.append(f"- Flujo de caja mensual: {fmt_pyg(r.cashflow)}  [{r.cashflow_rating.emoji} {r.cashflow_rating.label}]")
-    lines.append(f"- Tasa de ahorro: {fmt_pct(r.savings_rate)}  [{r.savings_rating.emoji} {r.savings_rating.label}]")
-    lines.append(f"- Endeudamiento (cuota/ingreso): {fmt_pct(r.dti)}  [{r.dti_rating.emoji} {r.dti_rating.label}]")
+    lines.append(f"- Excedente antes de ahorro: {fmt_pyg(r.cashflow)}  [{r.cashflow_rating.emoji} {r.cashflow_rating.label}]")
+    savings_txt = "No calculable (sin ingreso)" if r.savings_rating.key == "na" else fmt_pct(r.savings_rate)
+    lines.append(f"- Tasa de ahorro: {savings_txt}  [{r.savings_rating.emoji} {r.savings_rating.label}]")
+    dti_txt = "No calculable (sin ingreso)" if r.dti_rating.key == "na" else fmt_pct(r.dti)
+    lines.append(f"- Endeudamiento (cuota/ingreso): {dti_txt}  [{r.dti_rating.emoji} {r.dti_rating.label}]")
     lines.append(f"- Fondo de emergencia: {r.emergency_months:.1f} meses cubiertos  [{r.emergency_rating.emoji} {r.emergency_rating.label}]")
+    available_after_savings = r.cashflow - r.savings_monthly
+    lines.append(f"- Disponible después de ahorro (excedente − ahorro declarado): {fmt_pyg(available_after_savings)}")
+    if available_after_savings < 0:
+        lines.append(
+            "  ⚠️ El ahorro declarado supera el excedente disponible; verificar con el cliente el origen de "
+            "esos fondos (otros ingresos, activos existentes o deuda adicional)."
+        )
     lines.append("")
     lines.append(f"SALUD FINANCIERA GENERAL: {r.health_label} ({r.health_score}/{r.health_max})")
     lines.append("")
@@ -236,9 +245,11 @@ def generate_pdf(r: ClientFinReport) -> bytes:
         t(x+12, kpi_y+20, value, size=11.5, bold=True)
         t(x+12, kpi_y+6, f"{rating.emoji} {rating.label}", size=8.4, col=rating_color.get(rating.key, muted))
 
-    kpi(0, "Flujo de caja mensual", fmt_pyg(r.cashflow), r.cashflow_rating)
-    kpi(1, "Tasa de ahorro", fmt_pct(r.savings_rate), r.savings_rating)
-    kpi(2, "Endeudamiento (DTI)", fmt_pct(r.dti), r.dti_rating)
+    savings_val = "—" if r.savings_rating.key == "na" else fmt_pct(r.savings_rate)
+    dti_val = "—" if r.dti_rating.key == "na" else fmt_pct(r.dti)
+    kpi(0, "Excedente antes de ahorro", fmt_pyg(r.cashflow), r.cashflow_rating)
+    kpi(1, "Tasa de ahorro", savings_val, r.savings_rating)
+    kpi(2, "Endeudamiento (DTI)", dti_val, r.dti_rating)
     kpi(3, "Fondo de emergencia", f"{r.emergency_months:.1f} meses", r.emergency_rating)
 
     # Mid cards: perfil de riesgo (izq) + diagnóstico (der)
@@ -284,10 +295,13 @@ def generate_pdf(r: ClientFinReport) -> bytes:
     ]
     if r.net_worth is not None:
         rows.append(("Patrimonio neto aprox.", fmt_pyg(r.net_worth)))
+    available_after_savings = r.cashflow - r.savings_monthly
+    rows.append(("Disponible después de ahorro", fmt_pyg(available_after_savings)))
     ry = mid_y+mid_h-44
     for label, val in rows:
         t(rx+16, ry, label, size=8.9, col=muted)
-        tr(rx+rw-16, ry, val, size=8.9, bold=True)
+        val_col = bad if (label == "Disponible después de ahorro" and available_after_savings < 0) else text
+        tr(rx+rw-16, ry, val, size=8.9, bold=True, col=val_col)
         ry -= 15
 
     # Bottom card: plan de acción

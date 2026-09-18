@@ -51,6 +51,7 @@ hr { border-color: var(--line); }
 .pill.good{ background: rgba(39,209,124,.12); }
 .pill.warn{ background: rgba(255,204,102,.12); }
 .pill.bad{ background: rgba(255,93,93,.12); }
+.pill.na{ background: rgba(255,255,255,.06); opacity: .85; }
 .kpiSub { color: var(--muted); font-size: .82rem; margin-top: -2px; }
 </style>
 """
@@ -80,14 +81,18 @@ def rate_cashflow(flow: float, income: float) -> rep.Rating:
         return rep.Rating("warn", "Ajustado", "🟡")
     return rep.Rating("good", "Saludable", "🟢")
 
-def rate_savings(rate: float) -> rep.Rating:
+def rate_savings(rate: float, income: float) -> rep.Rating:
+    if income <= 0:
+        return rep.Rating("na", "No calculable", "⚪")
     if rate < 0.10:
         return rep.Rating("bad", "Bajo", "🔴")
     if rate < 0.20:
         return rep.Rating("warn", "Medio", "🟡")
     return rep.Rating("good", "Bueno", "🟢")
 
-def rate_dti(dti: float) -> rep.Rating:
+def rate_dti(dti: float, income: float) -> rep.Rating:
+    if income <= 0:
+        return rep.Rating("na", "No calculable", "⚪")
     if dti > 0.35:
         return rep.Rating("bad", "Alto", "🔴")
     if dti > 0.20:
@@ -195,9 +200,9 @@ with tab1:
     )
     with st.expander("ℹ️ Cómo usar la escala (mostrar antes de empezar)"):
         st.write(
-            "La escala va de **Totalmente en desacuerdo** a **Totalmente de acuerdo**. "
-            "Si el cliente duda, sugerile elegir **Neutral** y seguir adelante; se puede volver a cualquier "
-            "pregunta antes de pasar a la pestaña de Diagnóstico."
+            "La escala va de **Totalmente en desacuerdo** a **Totalmente de acuerdo**. Ninguna pregunta "
+            "tiene una opción marcada por defecto: elegí una con el cliente para cada una. Se puede volver "
+            "a cualquier pregunta antes de pasar a la pestaña de Diagnóstico."
         )
     answers = []
     for i, (question, invert) in enumerate(RISK_QUESTIONS, start=1):
@@ -207,32 +212,49 @@ with tab1:
             st.markdown("")
             st.markdown("#### Bloque 2 · Reacciones emocionales y experiencia previa")
         st.markdown(f"**{i}. {question}**")
-        choice = st.select_slider(
-            f"Pregunta {i}", options=LIKERT_LABELS, value="Neutral", key=f"risk_q_{i}", label_visibility="collapsed"
+        choice = st.radio(
+            f"Pregunta {i}", options=LIKERT_LABELS, index=None, key=f"risk_q_{i}",
+            horizontal=True, label_visibility="collapsed",
         )
-        raw = LIKERT_LABELS.index(choice) + 1  # 1..5
-        score = (6 - raw) if invert else raw
-        answers.append(score)
+        if choice is None:
+            answers.append(None)
+        else:
+            raw = LIKERT_LABELS.index(choice) + 1  # 1..5
+            score = (6 - raw) if invert else raw
+            answers.append(score)
         st.markdown("")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    risk_score = int(sum(answers))
+    answered_count = sum(1 for a in answers if a is not None)
+    risk_complete = answered_count == len(RISK_QUESTIONS)
     risk_max = len(RISK_QUESTIONS) * 5
-    risk_category, risk_desc, alloc_fixed, alloc_variable = classify_risk(risk_score)
 
     st.markdown("")
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("### Resultado del test")
-    c1, c2 = st.columns([0.3, 0.7])
-    with c1:
-        st.metric("Puntaje", f"{risk_score} / {risk_max}")
-        st.markdown(f"**Perfil: {risk_category}**")
-    with c2:
-        st.write(risk_desc)
-        st.caption(
-            f"Mezcla ilustrativa (no es recomendación de inversión): "
-            f"{alloc_fixed}% bajo riesgo/ahorro — {alloc_variable}% mayor riesgo/crecimiento."
+    if not risk_complete:
+        risk_score = 0
+        risk_category = "Pendiente"
+        risk_desc = (
+            f"Cuestionario incompleto: faltan {len(RISK_QUESTIONS) - answered_count} de "
+            f"{len(RISK_QUESTIONS)} preguntas por responder. El perfil se calcula recién cuando "
+            "las 10 están contestadas, para no asumir una actitud que el cliente no expresó."
         )
+        alloc_fixed = alloc_variable = 0
+        st.info(f"🕓 {answered_count}/{len(RISK_QUESTIONS)} preguntas respondidas — {risk_desc}")
+    else:
+        risk_score = int(sum(answers))
+        risk_category, risk_desc, alloc_fixed, alloc_variable = classify_risk(risk_score)
+        c1, c2 = st.columns([0.3, 0.7])
+        with c1:
+            st.metric("Puntaje", f"{risk_score} / {risk_max}")
+            st.markdown(f"**Perfil: {risk_category}**")
+        with c2:
+            st.write(risk_desc)
+            st.caption(
+                f"Mezcla ilustrativa (no es recomendación de inversión): "
+                f"{alloc_fixed}% bajo riesgo/ahorro — {alloc_variable}% mayor riesgo/crecimiento."
+            )
     st.markdown("</div>", unsafe_allow_html=True)
 
 with tab2:
@@ -282,24 +304,24 @@ with tab2:
     emergency_months = safe_div(emergency_fund, (fixed_expenses + variable_expenses + debt_payment)) if (fixed_expenses + variable_expenses + debt_payment) else 0.0
 
     cashflow_rating = rate_cashflow(cashflow, income)
-    savings_rating = rate_savings(savings_rate)
-    dti_rating = rate_dti(dti)
+    savings_rating = rate_savings(savings_rate, income)
+    dti_rating = rate_dti(dti, income)
     emergency_rating = rate_emergency(emergency_months)
 
     st.markdown("")
     c1, c2, c3, c4 = st.columns(4, gap="medium")
     c1.metric(
-        "Flujo de caja mensual", fmt_pyg(cashflow),
-        help="Ingreso menos todos los gastos y cuotas de deuda. Si es negativo, el cliente gasta más de lo que gana.",
+        "Excedente antes de ahorro", fmt_pyg(cashflow),
+        help="Ingreso menos gastos y cuotas de deuda, SIN restar el ahorro/inversión mensual. Si es negativo, el cliente gasta más de lo que gana.",
     )
     c1.markdown(pill_html(cashflow_rating), unsafe_allow_html=True)
     c2.metric(
-        "Tasa de ahorro", fmt_pct(savings_rate),
+        "Tasa de ahorro", fmt_pct(savings_rate) if savings_rating.key != "na" else "—",
         help="Ahorro mensual como % del ingreso. Referencia usada en esta app: menos de 10% es bajo, 10-20% medio, 20% o más se considera bueno.",
     )
     c2.markdown(pill_html(savings_rating), unsafe_allow_html=True)
     c3.metric(
-        "Endeudamiento (DTI)", fmt_pct(dti),
+        "Endeudamiento (DTI)", fmt_pct(dti) if dti_rating.key != "na" else "—",
         help="Cuotas de deuda como % del ingreso (Debt-to-Income). Cuanto más alto, menos margen financiero.",
     )
     c3.markdown(pill_html(dti_rating), unsafe_allow_html=True)
@@ -309,11 +331,27 @@ with tab2:
     )
     c4.markdown(pill_html(emergency_rating), unsafe_allow_html=True)
 
-    health_points = sum(2 if r.key == "good" else (1 if r.key == "warn" else 0) for r in [cashflow_rating, savings_rating, dti_rating, emergency_rating])
+    available_after_savings = cashflow - savings_monthly
+    st.caption(
+        f"Disponible después de ahorro (excedente − ahorro declarado): **{fmt_pyg(available_after_savings)}**"
+    )
+    if available_after_savings < 0:
+        st.warning(
+            "⚠️ El ahorro/inversión mensual declarado (" + fmt_pyg(savings_monthly) + ") supera el excedente "
+            "disponible (" + fmt_pyg(cashflow) + "). Verificá con el cliente si ese ahorro proviene de otros "
+            "ingresos no declarados, de activos existentes o de deuda adicional."
+        )
+
+    diagnostic_ratings = [cashflow_rating, savings_rating, dti_rating, emergency_rating]
+    health_points = sum(2 if r.key == "good" else (1 if r.key == "warn" else 0) for r in diagnostic_ratings)
     health_max = 8
+    has_critical = any(r.key == "bad" for r in diagnostic_ratings)
     if health_points <= 3:
         health_label = "Situación crítica"
-    elif health_points <= 5:
+    elif health_points <= 5 or has_critical:
+        # No mostramos "Sólida" si hay al menos un indicador en rojo (ej. fondo de
+        # emergencia en 0), aunque el puntaje agregado sea alto: un solo indicador
+        # crítico no debería quedar tapado por el promedio.
         health_label = "En desarrollo"
     else:
         health_label = "Sólida"
@@ -325,6 +363,11 @@ with tab2:
 
 with tab3:
     action_plan = []
+    if income <= 0:
+        action_plan.append(
+            "⚪ Antes que nada: completá el ingreso mensual del cliente. Sin ese dato no se puede calcular "
+            "la tasa de ahorro ni el endeudamiento (quedan marcados como \"No calculable\")."
+        )
     if cashflow < 0:
         action_plan.append(
             "🔴 Prioridad 1: cerrar el déficit mensual. Los gastos superan los ingresos; antes de ahorrar o "
@@ -348,10 +391,16 @@ with tab3:
         )
     if not action_plan:
         action_plan.append("🟢 Buen punto de partida: los indicadores básicos están en orden. El siguiente paso es definir metas concretas de mediano y largo plazo.")
-    action_plan.append(
-        f"📈 Según el perfil de riesgo ({risk_category}), evalúa junto al cliente una mezcla ilustrativa acorde "
-        f"antes de tomar decisiones de inversión concretas."
-    )
+    if risk_complete:
+        action_plan.append(
+            f"📈 Según el perfil de riesgo ({risk_category}), evalúa junto al cliente una mezcla ilustrativa acorde "
+            f"antes de tomar decisiones de inversión concretas."
+        )
+    else:
+        action_plan.append(
+            "📈 Completá las 10 preguntas del test de perfil de riesgo (pestaña 1) para poder sugerir una "
+            "mezcla de inversión ilustrativa acorde al cliente."
+        )
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("### Plan de acción sugerido")
@@ -375,78 +424,91 @@ with tab4:
         missing_fields.append("nombre del consultor/a")
     if not client.strip():
         missing_fields.append("nombre del cliente")
+    if not risk_complete:
+        missing_fields.append(f"cuestionario de perfil de riesgo ({answered_count}/{len(RISK_QUESTIONS)} respondidas)")
+    if income <= 0:
+        missing_fields.append("ingreso mensual del cliente")
     if missing_fields:
         st.warning(
-            "⚠️ Falta completar en el panel lateral: " + " y ".join(missing_fields) + ". "
-            "Podés descargar igual, pero el reporte quedará sin esa identificación."
+            "⚠️ Falta completar: " + ", ".join(missing_fields) + ". "
+            "Podés descargar igual, pero el reporte quedará incompleto en esas secciones."
         )
 
-    report = rep.ClientFinReport(
-        consultant=consultant or "—",
-        client=client or "—",
-        report_date=date.today().isoformat(),
-        # OJO: no usar "if age" — edad=0 es un valor válido (aunque atípico) y una
-        # comprobación de verdad lo convertiría incorrectamente en None ("—").
-        age=int(age) if age is not None else None,
-        occupation=occupation or "—",
-        dependents=int(dependents),
-        objective=objective,
-        risk_score=risk_score,
-        risk_max=risk_max,
-        risk_category=risk_category,
-        risk_description=risk_desc,
-        risk_alloc_fixed=alloc_fixed,
-        risk_alloc_variable=alloc_variable,
-        income=float(income),
-        fixed_expenses=float(fixed_expenses),
-        variable_expenses=float(variable_expenses),
-        debt_payment=float(debt_payment),
-        savings_monthly=float(savings_monthly),
-        emergency_fund=float(emergency_fund),
-        net_worth=float(net_worth) if net_worth is not None else None,
-        total_expenses=float(total_expenses),
-        cashflow=float(cashflow),
-        savings_rate=float(savings_rate),
-        dti=float(dti),
-        emergency_months=float(emergency_months),
-        cashflow_rating=cashflow_rating,
-        savings_rating=savings_rating,
-        dti_rating=dti_rating,
-        emergency_rating=emergency_rating,
-        health_score=int(health_points),
-        health_max=int(health_max),
-        health_label=health_label,
-        action_plan=action_plan,
+    st.markdown("")
+    confirm_real_data = st.checkbox(
+        "Confirmo que los valores ingresados en las pestañas anteriores corresponden a este cliente real "
+        "(no son los montos de ejemplo precargados por la app).",
     )
+    if not confirm_real_data:
+        st.warning("☝️ Marcá la casilla de arriba para habilitar la descarga del reporte.")
 
-    txt_report = rep.build_text_report(report)
-    st.download_button(
-        "⬇️ Descargar reporte (TXT)",
-        data=txt_report.encode("utf-8"),
-        file_name="diagnostico_finanzas_personales.txt",
-        mime="text/plain",
-    )
+    if confirm_real_data:
+        report = rep.ClientFinReport(
+            consultant=consultant or "—",
+            client=client or "—",
+            report_date=date.today().isoformat(),
+            # OJO: no usar "if age" — edad=0 es un valor válido (aunque atípico) y una
+            # comprobación de verdad lo convertiría incorrectamente en None ("—").
+            age=int(age) if age is not None else None,
+            occupation=occupation or "—",
+            dependents=int(dependents),
+            objective=objective,
+            risk_score=risk_score,
+            risk_max=risk_max,
+            risk_category=risk_category,
+            risk_description=risk_desc,
+            risk_alloc_fixed=alloc_fixed,
+            risk_alloc_variable=alloc_variable,
+            income=float(income),
+            fixed_expenses=float(fixed_expenses),
+            variable_expenses=float(variable_expenses),
+            debt_payment=float(debt_payment),
+            savings_monthly=float(savings_monthly),
+            emergency_fund=float(emergency_fund),
+            net_worth=float(net_worth) if net_worth is not None else None,
+            total_expenses=float(total_expenses),
+            cashflow=float(cashflow),
+            savings_rate=float(savings_rate),
+            dti=float(dti),
+            emergency_months=float(emergency_months),
+            cashflow_rating=cashflow_rating,
+            savings_rating=savings_rating,
+            dti_rating=dti_rating,
+            emergency_rating=emergency_rating,
+            health_score=int(health_points),
+            health_max=int(health_max),
+            health_label=health_label,
+            action_plan=action_plan,
+        )
 
-    if rep.REPORTLAB_OK:
-        pdf_bytes = rep.generate_pdf(report)
+        txt_report = rep.build_text_report(report)
         st.download_button(
-            "⬇️ Descargar reporte (PDF)",
-            data=pdf_bytes,
-            file_name="diagnostico_finanzas_personales.pdf",
-            mime="application/pdf",
+            "⬇️ Descargar reporte (TXT)",
+            data=txt_report.encode("utf-8"),
+            file_name="diagnostico_finanzas_personales.txt",
+            mime="text/plain",
         )
-    else:
-        st.info("Para exportar PDF, agrega `reportlab` a requirements.txt.")
+
+        if rep.REPORTLAB_OK:
+            pdf_bytes = rep.generate_pdf(report)
+            st.download_button(
+                "⬇️ Descargar reporte (PDF)",
+                data=pdf_bytes,
+                file_name="diagnostico_finanzas_personales.pdf",
+                mime="application/pdf",
+            )
+        else:
+            st.info("Para exportar PDF, agrega `reportlab` a requirements.txt.")
 
 st.sidebar.divider()
 st.sidebar.subheader("📶 Progreso de la consultoría")
 st.sidebar.write(f"1️⃣ Perfil de riesgo: **{risk_category}** ({risk_score}/{risk_max})")
 st.sidebar.write(f"2️⃣ Diagnóstico financiero: **{health_label}** ({health_points}/{health_max})")
 st.sidebar.write(f"3️⃣ Plan de acción: **{len(action_plan)}** recomendación(es)")
-if consultant.strip() and client.strip():
+if confirm_real_data:
     st.sidebar.write("4️⃣ Reporte: ✅ listo para descargar")
 else:
-    st.sidebar.write("4️⃣ Reporte: ⚠️ completá nombre de consultor/a y cliente")
+    st.sidebar.write("4️⃣ Reporte: ⚠️ confirmá los datos en la pestaña Reporte para habilitar la descarga")
 
 st.markdown(
     "<div class='small' style='text-align:center; margin-top:8px;'>Uso educativo — Diplomado de Finanzas "
