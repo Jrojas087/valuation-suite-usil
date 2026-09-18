@@ -302,14 +302,24 @@ def generate_pdf(r: ClientFinReport) -> bytes:
     t(left+16, bot_y+bot_h-24, "Plan de acción sugerido", size=11.2, bold=True)
     yy = bot_y+bot_h-44
     truncated = False
-    for idx, item in enumerate(r.action_plan):
-        for ln in wrap(item, 108):
+    items = list(r.action_plan)
+    for idx, item in enumerate(items):
+        wrapped_lines = wrap(item, 108)
+        stop = False
+        for line_idx, ln in enumerate(wrapped_lines):
+            # Antes de dibujar cada línea (no recién al terminar el ítem) chequeamos si
+            # queda contenido pendiente y ya no hay lugar: si dibujáramos igual, la última
+            # línea del ítem podía terminar superpuesta con el aviso de continuación.
+            more_content = (line_idx < len(wrapped_lines) - 1) or (idx < len(items) - 1)
+            if yy < bot_y + 24 and more_content:
+                truncated = True
+                stop = True
+                break
             t(left+20, yy, ln, size=9.2, col=muted)
             yy -= 12.5
-        yy -= 2
-        if yy < bot_y + 24 and idx < len(r.action_plan) - 1:
-            truncated = True
+        if stop:
             break
+        yy -= 2
     if truncated:
         t(left+20, bot_y+12, "(continúa en el reporte TXT — ver ítems adicionales)", size=8.2, col=accent)
 
