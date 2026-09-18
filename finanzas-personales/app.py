@@ -1,8 +1,8 @@
-# pages/1_💰_Finanzas_Personales.py
+# finanzas-personales/app.py
 # Consultoría de Finanzas Personales — Test de riesgo + Diagnóstico rápido + Plan de acción + PDF
-# Diplomado de Finanzas Personales
+# Diplomado de Finanzas Personales — Herramienta independiente
 # ------------------------------------------------------------
-# Requisitos: ver requirements.txt (streamlit, reportlab — ya usados por la app de valuación)
+# Requisitos: ver requirements.txt en la raíz del repo (streamlit, reportlab)
 
 from datetime import date
 
