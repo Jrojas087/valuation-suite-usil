@@ -347,36 +347,49 @@ def generate_pdf(r: ClientFinReport) -> bytes:
     kpi(3, "Fondo de emergencia", emergency_val, r.emergency_rating)
 
     # Mid cards: perfil de riesgo (izq) + diagnóstico (der)
-    mid_y = kpi_y - 210
-    mid_h = 190
-    lw = (right-left)*0.50-8
-    rw = (right-left)*0.50-8
-    rr(left, mid_y, lw, mid_h, r=18, fill=card)
-    rr(left+lw+16, mid_y, rw, mid_h, r=18, fill=card)
-
-    # Izquierda: perfil de riesgo
-    t(left+16, mid_y+mid_h-24, "Perfil de riesgo", size=11.2, bold=True)
-    t(left+16, mid_y+mid_h-40, f"{r.risk_category}  —  {r.risk_score}/{r.risk_max} pts", size=10, bold=True, col=accent)
-    yy = para(left+16, mid_y+mid_h-58, r.risk_description, width_chars=52)
-    yy = para(left+16, yy - 4, RISK_METHOD_NOTE, width_chars=60, size=7.6, leading=9.5, col=accent)
-
-    bar_x = left+16
-    bar_h = 14
+    # Altura dinámica: antes la tarjeta tenía una altura fija (190pt) que asumía una
+    # descripción de riesgo corta; en la práctica CASI TODAS las categorías (4 de 5,
+    # más el estado "Pendiente") envuelven a 4 líneas y, sumadas a la nota
+    # metodológica (5 líneas), se salían de esa altura fija — la barra de "mezcla
+    # ilustrativa" terminaba dibujada encima del texto. Ahora la tarjeta mide el
+    # contenido real (líneas de texto envueltas) y crece hacia abajo si hace falta,
+    # empujando el resto del layout (que ya depende de mid_y) sin solaparse.
+    desc_lines = wrap(r.risk_description, 52)
+    note_lines = wrap(RISK_METHOD_NOTE, 60)
     caption_text = (
         f"Mezcla ilustrativa: {r.risk_alloc_fixed}% bajo riesgo / {r.risk_alloc_variable}% mayor riesgo "
         f"(no es recomendación)"
     )
     caption_leading = 9.2
     caption_lines = wrap(caption_text, 58)
-    # Espacio que necesita la leyenda debajo de la barra: si no entra en una sola
-    # línea (tarjeta angosta / texto más largo de lo habitual), reserva 2 líneas en
-    # vez de dejar que se salga de la tarjeta.
-    caption_block_h = 12 + (len(caption_lines) - 1) * caption_leading
-    # La posición de la barra se ajusta al contenido de arriba (descripción + nota
-    # metodológica) para no solaparse si el texto ocupa más líneas de lo habitual,
-    # y deja piso suficiente para que la leyenda (una o dos líneas) no se salga por
-    # abajo de la tarjeta.
-    bar_y = max(mid_y + 6 + caption_block_h, min(mid_y + 30, yy - 12))
+    left_needed_h = (
+        58 + len(desc_lines) * 12 + 4 + len(note_lines) * 9.5 + 12 + 14 + 12
+        + len(caption_lines) * caption_leading + 14
+    )
+    right_rows_count = 7 if r.net_worth is not None else 6
+    right_needed_h = 44 + right_rows_count * 15 + 10
+
+    mid_h = max(190, left_needed_h, right_needed_h)
+    mid_top = kpi_y - 20
+    mid_y = mid_top - mid_h
+    lw = (right-left)*0.50-8
+    rw = (right-left)*0.50-8
+    rr(left, mid_y, lw, mid_h, r=18, fill=card)
+    rr(left+lw+16, mid_y, rw, mid_h, r=18, fill=card)
+
+    # Izquierda: perfil de riesgo (todo posicionado desde el borde superior fijo
+    # mid_top, no desde mid_y+mid_h, para que el contenido no se mueva aunque la
+    # tarjeta crezca hacia abajo)
+    t(left+16, mid_top-24, "Perfil de riesgo", size=11.2, bold=True)
+    t(left+16, mid_top-40, f"{r.risk_category}  —  {r.risk_score}/{r.risk_max} pts", size=10, bold=True, col=accent)
+    yy = para(left+16, mid_top-58, r.risk_description, width_chars=52)
+    yy = para(left+16, yy - 4, RISK_METHOD_NOTE, width_chars=60, size=7.6, leading=9.5, col=accent)
+
+    bar_x = left+16
+    bar_h = 14
+    # Ya no hace falta acotar la posición con max()/min(): la tarjeta mide lo que el
+    # texto necesita, así que la barra simplemente va justo debajo de la nota.
+    bar_y = yy - 12
     bar_w = lw-32
     c.setFillColor(colors.Color(1, 1, 1, alpha=0.05))
     c.rect(bar_x, bar_y, bar_w, bar_h, stroke=0, fill=1)
@@ -392,7 +405,7 @@ def generate_pdf(r: ClientFinReport) -> bytes:
 
     # Derecha: diagnóstico financiero
     rx = left+lw+16
-    t(rx+16, mid_y+mid_h-24, "Diagnóstico financiero", size=11.2, bold=True)
+    t(rx+16, mid_top-24, "Diagnóstico financiero", size=11.2, bold=True)
     rows = [
         ("Ingreso mensual", fmt_pyg(r.income)),
         ("Gastos fijos", fmt_pyg(r.fixed_expenses)),
@@ -405,7 +418,7 @@ def generate_pdf(r: ClientFinReport) -> bytes:
         rows.append(("Patrimonio neto aprox.", fmt_pyg(r.net_worth)))
     available_after_savings = r.cashflow - r.savings_monthly
     rows.append(("Disponible después de ahorro", fmt_pyg(available_after_savings)))
-    ry = mid_y+mid_h-44
+    ry = mid_top-44
     for label, val in rows:
         t(rx+16, ry, label, size=8.9, col=muted)
         val_col = bad if (label == "Disponible después de ahorro" and available_after_savings < 0) else text
