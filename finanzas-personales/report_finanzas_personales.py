@@ -299,24 +299,29 @@ def generate_pdf(r: ClientFinReport) -> bytes:
     # La píldora de salud financiera (dibujada más abajo) ocupa una franja vertical
     # que cruza tanto la fila 1 (Consultor/a | Cliente) como la fila 2 (Edad |
     # Ocupación | Dependientes), así que ambas deben frenar antes de su borde
-    # izquierdo, no solo antes del texto de la fecha.
+    # izquierdo. La fecha, en cambio, NO va en esas filas: si se dibuja a la misma
+    # altura que la píldora (right-63 a top-37), la píldora se pinta encima y la
+    # tapa (se dibuja después). Por eso la fecha se movió a la fila del objetivo,
+    # que queda por debajo del borde inferior de la píldora.
     pill_left_x = right-210
     date_str = f"Fecha: {r.report_date}"
     date_w = c.stringWidth(date_str, "Helvetica", 9.5)
     date_start_x = right-16 - date_w
-    line1_max_w = min(date_start_x - 12, pill_left_x - 10) - (left+16)
+
+    line1_max_w = pill_left_x - 10 - (left+16)
     line1 = ellipsize(f"Consultor/a: {r.consultant}  |  Cliente: {r.client}", line1_max_w, size=9.5)
     t(left+16, top-45, line1, size=9.5, col=muted)
-    tr(right-16, top-45, date_str, size=9.5, col=muted)
 
-    line2_max_w = (pill_left_x - 10) - (left+16)
+    line2_max_w = pill_left_x - 10 - (left+16)
     line2 = ellipsize(
         f"Edad: {edad}  |  Ocupación: {r.occupation}  |  Dependientes: {r.dependents}", line2_max_w, size=9.5,
     )
     t(left+16, top-60, line2, size=9.5, col=muted)
 
-    line3 = ellipsize(f"Objetivo: {r.objective}", (right-16) - (left+16), size=9.5)
+    line3_max_w = date_start_x - 12 - (left+16)
+    line3 = ellipsize(f"Objetivo: {r.objective}", line3_max_w, size=9.5)
     t(left+16, top-75, line3, size=9.5, col=accent)
+    tr(right-16, top-75, date_str, size=9.5, col=muted)
 
     # Health pill
     pill_col = good if r.health_score >= 6 else (bad if r.health_score <= 3 else warn)
