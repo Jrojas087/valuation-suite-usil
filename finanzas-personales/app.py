@@ -4,6 +4,7 @@
 # ------------------------------------------------------------
 # Requisitos: ver requirements.txt en la raíz del repo (streamlit, reportlab)
 
+import math
 import re
 from datetime import date
 
@@ -67,15 +68,21 @@ st.caption("Test de perfil de riesgo + diagnóstico financiero rápido + plan de
 # Utilidades
 # ============================================================
 def fmt_pct(x: float) -> str:
+    if x is None or not math.isfinite(x):
+        return "—"
     return f"{x*100:.1f}%"
 
 def fmt_pyg(x: float) -> str:
+    if x is None or not math.isfinite(x):
+        return "—"
     return "Gs. {:,.0f}".format(float(x)).replace(",", ".")
 
 def safe_div(a: float, b: float) -> float:
     return a / b if b else 0.0
 
 def rate_cashflow(flow: float, income: float) -> rep.Rating:
+    if income <= 0:
+        return rep.Rating("na", "No calculable", "⚪")
     if flow < 0:
         return rep.Rating("bad", "Déficit", "🔴")
     ratio = safe_div(flow, income)
@@ -95,7 +102,7 @@ def rate_savings(rate: float, income: float) -> rep.Rating:
 def rate_dti(dti: float, income: float) -> rep.Rating:
     if income <= 0:
         return rep.Rating("na", "No calculable", "⚪")
-    if dti > 0.35:
+    if dti > 0.30:
         return rep.Rating("bad", "Alto", "🔴")
     if dti > 0.20:
         return rep.Rating("warn", "Moderado", "🟡")
@@ -205,10 +212,14 @@ def classify_risk(score: int):
 # ============================================================
 # Tabs
 # ============================================================
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
+# Valor por defecto para confirm_real_data; se sobreescribe dentro de tab6.
+# Sin esto, el sidebar de progreso (al fondo del script) puede hacer NameError
+# si tab6 no se hubiera ejecutado aún.
+confirm_real_data = False
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
     [
         "🎯 Perfil de riesgo", "🩺 Diagnóstico financiero", "💰 Meta de ahorro",
-        "📋 Plan de acción", "🔀 Comparador", "📚 Glosario", "📄 Reporte",
+        "📋 Plan de acción", "🔀 Comparador", "📄 Reporte",
     ]
 )
 
@@ -280,6 +291,12 @@ with tab1:
                 f"Mezcla ilustrativa (no es recomendación de inversión): "
                 f"{alloc_fixed}% bajo riesgo/ahorro — {alloc_variable}% mayor riesgo/crecimiento."
             )
+            # ── UX4: Nota metodológica capacidad vs tolerancia ─────────────────
+            st.caption(
+                "📌 Nota: las preguntas 4 ('Mis ingresos son estables') y 8 ('Cuento con un fondo de emergencia') "
+                "también reflejan tu capacidad objetiva de absorber riesgo, no solo tu actitud. "
+                "Comparalas con los resultados del Diagnóstico financiero para un perfil más completo."
+            )
     st.markdown("</div>", unsafe_allow_html=True)
 
 with tab2:
@@ -335,7 +352,7 @@ with tab2:
     cashflow = income - total_expenses
     savings_rate = safe_div(savings_monthly, income)
     dti = safe_div(debt_payment, income)
-    emergency_months = safe_div(emergency_fund, (fixed_expenses + variable_expenses + debt_payment)) if (fixed_expenses + variable_expenses + debt_payment) else 0.0
+    emergency_months = safe_div(emergency_fund, total_expenses)
 
     cashflow_rating = rate_cashflow(cashflow, income)
     savings_rating = rate_savings(savings_rate, income)
@@ -356,8 +373,9 @@ with tab2:
     c2.markdown(pill_html(savings_rating), unsafe_allow_html=True)
     c3.metric(
         "Endeudamiento (DTI)", fmt_pct(dti) if dti_rating.key != "na" else "—",
-        help="Cuotas de deuda como % del ingreso NETO (no bruto, a diferencia del DTI que suelen usar los "
-        "bancos). Es una referencia propia de esta herramienta, no un estándar regulado.",
+        help="Cuotas de deuda como % del ingreso NETO (umbral rojo: >30%, amarillo: 21-30%, verde: ≤20%). "
+        "Nota: el estándar bancario usa ingreso bruto con umbral del 36%; al calcular sobre ingreso neto, "
+        "se aplica un umbral más conservador (30%) para equivaler aproximadamente al mismo nivel de riesgo.",
     )
     c3.markdown(pill_html(dti_rating), unsafe_allow_html=True)
     c4.metric(
@@ -378,8 +396,12 @@ with tab2:
         )
 
     diagnostic_ratings = [cashflow_rating, savings_rating, dti_rating, emergency_rating]
-    health_points = sum(2 if r.key == "good" else (1 if r.key == "warn" else 0) for r in diagnostic_ratings)
-    health_max = 8
+    # "na" (indicador no calculable por falta de datos) se excluye del denominador
+    # en vez de penalizarse como "bad" (0 pts): un dato faltante no es lo mismo que
+    # un indicador en rojo.
+    _rated = [r for r in diagnostic_ratings if r.key != "na"]
+    health_max = len(_rated) * 2 if _rated else 8
+    health_points = sum(2 if r.key == "good" else (1 if r.key == "warn" else 0) for r in _rated)
     has_critical = any(r.key == "bad" for r in diagnostic_ratings)
     if health_points <= 3:
         health_label = "Situación crítica"
@@ -465,6 +487,52 @@ with tab2:
             st.write(f"📌 {debt_priority_note}")
         else:
             debt_priority_note = None
+
+    # ── UX2: Calculadora 50/30/20 ─────────────────────────────────────────────
+    st.markdown("")
+    with st.expander("📊 Regla 50/30/20 — ¿cómo se compara el cliente?"):
+        if income > 0:
+            nec_pct  = safe_div(fixed_expenses + debt_payment, income)   # necesidades
+            deseo_pct = safe_div(variable_expenses, income)              # deseos
+            ahorro_pct = safe_div(savings_monthly, income)               # ahorro
+
+            st.caption(
+                "La regla 50/30/20 sugiere destinar ~50% del ingreso a necesidades (gastos fijos + deudas), "
+                "~30% a deseos (gastos variables), y ~20% a ahorro/inversión. "
+                "Es una referencia general, no una meta exacta."
+            )
+            c5020_1, c5020_2, c5020_3 = st.columns(3)
+
+            def pct_pill(actual, target, label_over, label_ok):
+                if actual > target * 1.10:
+                    return f"🔴 {label_over} ({actual*100:.0f}% vs ~{target*100:.0f}%)"
+                elif actual > target:
+                    return f"🟡 Ajustado ({actual*100:.0f}% vs ~{target*100:.0f}%)"
+                return f"🟢 {label_ok} ({actual*100:.0f}% vs ~{target*100:.0f}%)"
+
+            c5020_1.metric("Necesidades", f"{nec_pct*100:.0f}%", help="Gastos fijos + cuota de deudas")
+            c5020_1.caption(pct_pill(nec_pct, 0.50, "Por encima del 50%", "Dentro del 50%"))
+
+            c5020_2.metric("Deseos", f"{deseo_pct*100:.0f}%", help="Gastos variables")
+            c5020_2.caption(pct_pill(deseo_pct, 0.30, "Por encima del 30%", "Dentro del 30%"))
+
+            c5020_3.metric("Ahorro", f"{ahorro_pct*100:.0f}%", help="Ahorro/inversión mensual declarado")
+            # Para ahorro, menor es peor (invertir la lógica)
+            if ahorro_pct >= 0.20:
+                c5020_3.caption(f"🟢 Excelente ({ahorro_pct*100:.0f}% vs ~20%)")
+            elif ahorro_pct >= 0.10:
+                c5020_3.caption(f"🟡 En desarrollo ({ahorro_pct*100:.0f}% vs ~20%)")
+            else:
+                c5020_3.caption(f"🔴 Por debajo del 20% ({ahorro_pct*100:.0f}%)")
+
+            total_asignado = nec_pct + deseo_pct + ahorro_pct
+            if abs(total_asignado - 1.0) > 0.02:
+                st.info(
+                    f"ℹ️ La suma de las tres categorías ({total_asignado*100:.0f}%) no es 100% porque "
+                    "los gastos cargados no cubren todo el ingreso (hay dinero sin asignar) o lo superan."
+                )
+        else:
+            st.caption("Completá el ingreso mensual para ver la comparativa 50/30/20.")
 
 with tab3:
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -717,27 +785,6 @@ with tab5:
 
 with tab6:
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("### Glosario para explicarle al cliente")
-    st.caption("Definiciones breves, en lenguaje simple, para usar durante la consultoría.")
-    glosario = [
-        ("Excedente antes de ahorro", "Lo que queda del ingreso después de pagar gastos y cuotas de deuda, SIN restar lo que se ahorra. Si es negativo, se está gastando más de lo que se gana."),
-        ("Disponible después de ahorro", "El excedente menos lo que el cliente dice que ahorra. Si da negativo, el ahorro declarado no es sostenible con el ingreso actual."),
-        ("Tasa de ahorro", "Qué porcentaje del ingreso se destina a ahorro/inversión cada mes."),
-        ("Endeudamiento (DTI)", "Qué porcentaje del ingreso neto se va en cuotas de deuda. A mayor DTI, menos margen para imprevistos."),
-        ("Fondo de emergencia", "Ahorro líquido para cubrir gastos si el cliente pierde su ingreso. Se mide en 'meses de gastos cubiertos'."),
-        ("Perfil de riesgo (tolerancia)", "Qué tan cómodo se siente el cliente asumiendo pérdidas temporales a cambio de mayor retorno. Es una actitud psicológica, no una medida de cuánto riesgo puede permitirse."),
-        ("Capacidad de riesgo", "Cuánta pérdida puede absorber el cliente en la práctica, según su edad, estabilidad de ingresos, dependientes y colchón de emergencia. Es distinta de la tolerancia (arriba) y esta herramienta no la calcula por separado."),
-        ("Patrimonio neto", "Todo lo que el cliente posee (activos) menos todo lo que debe (pasivos). Puede ser 0 sin que sea un error de carga."),
-        ("Regla 50/30/20", "Guía general de presupuesto: ~50% del ingreso a necesidades, ~30% a deseos, ~20% a ahorro o pago extra de deuda. No es una meta obligatoria, es un punto de referencia."),
-        ("Mezcla ilustrativa", "Un ejemplo de cómo repartir ahorros entre instrumentos de bajo y mayor riesgo según el perfil del test. No es una recomendación de inversión concreta."),
-    ]
-    for termino, definicion in glosario:
-        with st.expander(termino):
-            st.write(definicion)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-with tab7:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("### Generar reporte")
     st.write(
         "Revisá que los datos de las pestañas anteriores estén completos. Cuando estés listo/a, "
@@ -891,6 +938,38 @@ elif confirm_real_data:
     st.sidebar.write("4️⃣ Reporte: ⚠️ presioná \"Generar reporte\" en la pestaña Reporte")
 else:
     st.sidebar.write("4️⃣ Reporte: ⚠️ confirmá los datos en la pestaña Reporte para generarlo")
+
+# ── UX3: Advertencia si los datos parecen ser los de ejemplo ──────────────────
+_datos_parecen_ejemplo = (
+    not consultant.strip()
+    and not client.strip()
+    and income == 6_000_000.0
+)
+if _datos_parecen_ejemplo:
+    st.sidebar.warning(
+        "⚠️ Los datos parecen ser los valores de ejemplo precargados. "
+        "Asegurate de cargar los datos reales del cliente antes de generar el reporte."
+    )
+
+# ── UX1-c: Glosario colapsable en el sidebar ──────────────────────────────────
+st.sidebar.divider()
+glosario = [
+    ("Excedente antes de ahorro", "Lo que queda del ingreso después de pagar gastos y cuotas de deuda, SIN restar lo que se ahorra. Si es negativo, se está gastando más de lo que se gana."),
+    ("Disponible después de ahorro", "El excedente menos lo que el cliente dice que ahorra. Si da negativo, el ahorro declarado no es sostenible con el ingreso actual."),
+    ("Tasa de ahorro", "Qué porcentaje del ingreso se destina a ahorro/inversión cada mes."),
+    ("Endeudamiento (DTI)", "Qué porcentaje del ingreso neto se va en cuotas de deuda. A mayor DTI, menos margen para imprevistos."),
+    ("Fondo de emergencia", "Ahorro líquido para cubrir gastos si el cliente pierde su ingreso. Se mide en 'meses de gastos cubiertos'."),
+    ("Perfil de riesgo (tolerancia)", "Qué tan cómodo se siente el cliente asumiendo pérdidas temporales a cambio de mayor retorno. Es una actitud psicológica, no una medida de cuánto riesgo puede permitirse."),
+    ("Capacidad de riesgo", "Cuánta pérdida puede absorber el cliente en la práctica, según su edad, estabilidad de ingresos, dependientes y colchón de emergencia. Es distinta de la tolerancia (arriba) y esta herramienta no la calcula por separado."),
+    ("Patrimonio neto", "Todo lo que el cliente posee (activos) menos todo lo que debe (pasivos). Puede ser 0 sin que sea un error de carga."),
+    ("Regla 50/30/20", "Guía general de presupuesto: ~50% del ingreso a necesidades, ~30% a deseos, ~20% a ahorro o pago extra de deuda. No es una meta obligatoria, es un punto de referencia."),
+    ("Mezcla ilustrativa", "Un ejemplo de cómo repartir ahorros entre instrumentos de bajo y mayor riesgo según el perfil del test. No es una recomendación de inversión concreta."),
+]
+with st.sidebar.expander("📚 Glosario de términos"):
+    for termino, definicion in glosario:
+        st.markdown(f"**{termino}**")
+        st.caption(definicion)
+        st.markdown("")
 
 st.markdown(
     "<div class='small' style='text-align:center; margin-top:8px;'>Uso educativo — Diplomado de Finanzas "
