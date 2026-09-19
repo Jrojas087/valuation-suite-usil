@@ -4,8 +4,10 @@
 # ------------------------------------------------------------
 # Requisitos: ver requirements.txt en la raíz del repo (streamlit, reportlab)
 
+import re
 from datetime import date
 
+import pandas as pd
 import streamlit as st
 
 import report_finanzas_personales as rep
@@ -113,6 +115,20 @@ def rate_emergency(months: float, total_expenses: float) -> rep.Rating:
 def pill_html(rating: rep.Rating) -> str:
     return f'<span class="pill {rating.key}">{rating.emoji} {rating.label}</span>'
 
+def strip_emoji_prefix(s: str) -> str:
+    # Quita el emoji/símbolo inicial de los ítems del plan de acción (ej. "🔴 Prioridad
+    # 1: ...") para usarlos como texto de partida más limpio en la tabla de compromisos.
+    return re.sub(r"^[^\wÁÉÍÓÚÑáéíóúñ]+", "", s).strip()
+
+def safe_cell_num(v, default=0.0) -> float:
+    # En las tablas editables (data_editor), una celda numérica vacía llega como
+    # NaN — y "NaN or 0" da NaN (no 0), porque NaN es "truthy" en Python. Hay que
+    # chequear explícitamente con pd.notna(), no con el truthiness de la celda.
+    return float(v) if pd.notna(v) else default
+
+def safe_cell_text(v, default="") -> str:
+    return str(v).strip() if pd.notna(v) else default
+
 
 # ============================================================
 # Sidebar — Identificación
@@ -189,17 +205,22 @@ def classify_risk(score: int):
 # ============================================================
 # Tabs
 # ============================================================
-tab1, tab2, tab3, tab4 = st.tabs(
-    ["🎯 Perfil de riesgo", "🩺 Diagnóstico financiero", "📋 Plan de acción", "📄 Reporte"]
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
+    [
+        "🎯 Perfil de riesgo", "🩺 Diagnóstico financiero", "💰 Meta de ahorro",
+        "📋 Plan de acción", "🔀 Comparador", "📚 Glosario", "📄 Reporte",
+    ]
 )
 
 with tab1:
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("### Cuestionario de tolerancia al riesgo")
+    st.markdown("### Cuestionario orientativo de actitud ante el riesgo")
     st.markdown(
         "<div class='small'>Leé cada afirmación en voz alta junto a tu cliente y marcá qué tan de acuerdo "
         "está con ella. No hay respuestas correctas o incorrectas: la idea es capturar su actitud real "
-        "frente al riesgo, no lo que \"debería\" responder.</div>",
+        "frente al riesgo, no lo que \"debería\" responder. Este cuestionario es orientativo — no es un "
+        "instrumento psicométricamente validado ni sustituye una evaluación de capacidad de riesgo "
+        "(edad, estabilidad de ingresos, dependientes, fondo de emergencia).</div>",
         unsafe_allow_html=True,
     )
     with st.expander("ℹ️ Cómo usar la escala (mostrar antes de empezar)"):
@@ -335,7 +356,8 @@ with tab2:
     c2.markdown(pill_html(savings_rating), unsafe_allow_html=True)
     c3.metric(
         "Endeudamiento (DTI)", fmt_pct(dti) if dti_rating.key != "na" else "—",
-        help="Cuotas de deuda como % del ingreso (Debt-to-Income). Cuanto más alto, menos margen financiero.",
+        help="Cuotas de deuda como % del ingreso NETO (no bruto, a diferencia del DTI que suelen usar los "
+        "bancos). Es una referencia propia de esta herramienta, no un estándar regulado.",
     )
     c3.markdown(pill_html(dti_rating), unsafe_allow_html=True)
     c4.metric(
@@ -373,8 +395,120 @@ with tab2:
     st.markdown('<div class="card" style="text-align:center;">', unsafe_allow_html=True)
     st.markdown(f"### Salud financiera general: **{health_label}** ({health_points}/{health_max})")
     st.markdown("</div>", unsafe_allow_html=True)
+    st.caption(
+        "Referencia opcional: la regla 50/30/20 sugiere destinar ~50% del ingreso a necesidades, ~30% a "
+        "deseos y ~20% a ahorro/deuda extra. Es una guía general, no una meta exacta para todos los casos."
+    )
+
+    st.markdown("")
+    with st.expander("💳 Inventario de deudas (opcional) — para decidir cuál pagar primero"):
+        st.caption(
+            "Cargá cada deuda por separado (tarjetas, préstamos) para que la herramienta sugiera un orden "
+            "de pago según la tasa de interés. Es opcional: si no lo completás, el plan de acción usa solo "
+            "la 'Cuota mensual total de deudas' de arriba."
+        )
+        debts_df = st.data_editor(
+            pd.DataFrame({
+                "Deuda": pd.Series([], dtype="str"),
+                "Saldo": pd.Series([], dtype="float"),
+                "Tasa anual (%)": pd.Series([], dtype="float"),
+                "Pago mínimo": pd.Series([], dtype="float"),
+            }),
+            num_rows="dynamic",
+            column_config={
+                "Deuda": st.column_config.TextColumn(required=True),
+                "Saldo": st.column_config.NumberColumn(min_value=0.0, step=50_000.0, format="%.0f"),
+                "Tasa anual (%)": st.column_config.NumberColumn(min_value=0.0, max_value=500.0, step=0.5, format="%.1f"),
+                "Pago mínimo": st.column_config.NumberColumn(min_value=0.0, step=10_000.0, format="%.0f"),
+            },
+            key="fp_debts_editor",
+            width="stretch",
+        )
+        debts_list = [
+            rep.DebtItem(
+                nombre=safe_cell_text(row["Deuda"]),
+                saldo=safe_cell_num(row["Saldo"]),
+                tasa_anual=safe_cell_num(row["Tasa anual (%)"]) / 100.0,
+                pago_minimo=safe_cell_num(row["Pago mínimo"]),
+            )
+            for _, row in debts_df.iterrows()
+            if safe_cell_text(row["Deuda"])
+        ]
+        debt_priority_note = None
+        if debts_list:
+            peor = max(debts_list, key=lambda d: d.tasa_anual)
+            suma_pagos = sum(d.pago_minimo for d in debts_list)
+            if abs(suma_pagos - debt_payment) > max(10_000.0, debt_payment * 0.05):
+                st.info(
+                    f"ℹ️ La suma de pagos mínimos del inventario ({fmt_pyg(suma_pagos)}) no coincide con la "
+                    f"'Cuota mensual total de deudas' declarada arriba ({fmt_pyg(debt_payment)}). Ajustá el "
+                    "que corresponda para que el diagnóstico sea consistente."
+                )
+            if peor.tasa_anual > 0.15 and emergency_rating.key != "bad":
+                debt_priority_note = (
+                    f"Con el fondo de emergencia en un nivel mínimo aceptable, priorizá cancelar "
+                    f"'{peor.nombre}' (tasa {fmt_pct(peor.tasa_anual)} anual) antes que seguir acumulando "
+                    f"más de 3-6 meses de colchón: la tasa de esa deuda probablemente supera cualquier "
+                    f"rendimiento de mantener ese dinero ahorrado."
+                )
+            elif peor.tasa_anual > 0.15:
+                debt_priority_note = (
+                    f"Primero asegurá un mínimo de 3 meses de fondo de emergencia; recién después atacá la "
+                    f"deuda de mayor tasa ('{peor.nombre}', {fmt_pct(peor.tasa_anual)} anual)."
+                )
+            else:
+                debt_priority_note = (
+                    f"Ninguna deuda cargada tiene una tasa claramente alta (la mayor es '{peor.nombre}', "
+                    f"{fmt_pct(peor.tasa_anual)} anual); no hay una urgencia especial de pago acelerado por "
+                    "sobre el plan general."
+                )
+            st.write(f"📌 {debt_priority_note}")
+        else:
+            debt_priority_note = None
 
 with tab3:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown("### Meta de ahorro con monto y plazo")
+    st.caption(
+        "Opcional: definí junto al cliente una meta concreta (ej. un viaje, una cuota inicial) para "
+        "traducir el diagnóstico en una acción mensual verificable."
+    )
+    goal_name = st.text_input("Nombre de la meta", "", placeholder="Ej: Fondo para cuota inicial de vivienda")
+    colg1, colg2 = st.columns(2)
+    with colg1:
+        goal_amount = st.number_input("Monto objetivo (Gs.)", min_value=0.0, value=0.0, step=100_000.0)
+    with colg2:
+        goal_months = st.number_input("Plazo (meses)", min_value=0, value=0, step=1)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    has_goal = bool(goal_name.strip()) and goal_amount > 0 and goal_months > 0
+    if has_goal:
+        goal_required_monthly = goal_amount / goal_months
+        goal_feasible = goal_required_monthly <= savings_monthly
+        st.markdown("")
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        c1.metric("Ahorro mensual necesario", fmt_pyg(goal_required_monthly))
+        c2.metric("Ahorro mensual actual declarado", fmt_pyg(savings_monthly))
+        if goal_feasible:
+            st.success(f"✅ Alcanzable: con el ahorro actual, '{goal_name}' se cubre en {goal_months} meses o menos.")
+        else:
+            faltante = goal_required_monthly - savings_monthly
+            st.warning(
+                f"⚠️ No alcanza con el ahorro actual: falta destinar {fmt_pyg(faltante)} más por mes a esta "
+                f"meta, o extender el plazo. A este ritmo actual ({fmt_pyg(savings_monthly)}/mes), la meta "
+                f"tomaría {(goal_amount / savings_monthly):.0f} meses en vez de {goal_months}."
+                if savings_monthly > 0 else
+                "⚠️ No alcanza: el cliente no declaró ahorro mensual actual, así que no puede cubrir esta "
+                "meta sin antes generar un excedente."
+            )
+        st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        goal_required_monthly = None
+        goal_feasible = None
+        st.caption("Completá nombre, monto y plazo (mayores a 0) para calcular la meta.")
+
+with tab4:
     action_plan = []
     if income <= 0:
         action_plan.append(
@@ -470,6 +604,24 @@ with tab3:
             "mezcla de inversión ilustrativa acorde al cliente."
         )
 
+    # Conecta el inventario de deudas (pestaña Diagnóstico) con el orden del plan,
+    # en vez de asumir siempre "primero fondo de emergencia completo, después deuda".
+    if debts_list and debt_priority_note:
+        action_plan.append(f"💳 Deudas: {debt_priority_note}")
+
+    # Conecta la meta de ahorro (si se cargó) con el plan.
+    if has_goal:
+        if goal_feasible:
+            action_plan.append(
+                f"🏁 Meta '{goal_name}': alcanzable con el ahorro actual en {goal_months} meses; dale "
+                f"seguimiento mes a mes junto al cliente."
+            )
+        else:
+            action_plan.append(
+                f"🏁 Meta '{goal_name}': con el ahorro actual no se llega en el plazo definido; ajustá el "
+                f"monto mensual destinado o el plazo (ver pestaña 'Meta de ahorro')."
+            )
+
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("### Plan de acción sugerido")
     for item in action_plan:
@@ -478,7 +630,113 @@ with tab3:
 
     st.info(rep.DISCLAIMER)
 
-with tab4:
+    st.markdown("")
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown("### Compromisos acordados con el cliente")
+    st.caption(
+        "Convertí las recomendaciones de arriba en compromisos concretos: qué se hace, para cuándo y quién "
+        "es responsable. Podés editar el texto, agregar o borrar filas."
+    )
+    _suggested = [strip_emoji_prefix(item) for item in action_plan[:3]]
+    commitments_df = st.data_editor(
+        pd.DataFrame({
+            "Compromiso": _suggested,
+            "Fecha": [None] * len(_suggested),
+            "Responsable": ["Cliente"] * len(_suggested),
+        }),
+        num_rows="dynamic",
+        column_config={
+            "Compromiso": st.column_config.TextColumn(required=True, width="large"),
+            "Fecha": st.column_config.DateColumn(),
+            "Responsable": st.column_config.SelectboxColumn(options=["Cliente", "Consultor/a", "Ambos"]),
+        },
+        key="fp_commitments_editor",
+        width="stretch",
+    )
+    commitments = []
+    for _, row in commitments_df.iterrows():
+        texto = safe_cell_text(row["Compromiso"])
+        if not texto:
+            continue
+        fecha_val = row["Fecha"]
+        fecha_str = fecha_val.isoformat() if pd.notna(fecha_val) and hasattr(fecha_val, "isoformat") else ""
+        commitments.append((texto, fecha_str, safe_cell_text(row["Responsable"])))
+    st.markdown("</div>", unsafe_allow_html=True)
+
+with tab5:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown("### Comparador antes / después")
+    st.caption(
+        "Simulá con el cliente el efecto de reducir un gasto o aumentar el ahorro. Es solo una vista "
+        "interactiva para la conversación: NO cambia los datos de la pestaña Diagnóstico ni el reporte final."
+    )
+    colw1, colw2 = st.columns(2)
+    with colw1:
+        reduce_variable = st.number_input(
+            "Reducir gastos variables en (Gs./mes)", min_value=0.0, max_value=float(variable_expenses),
+            value=0.0, step=50_000.0,
+        )
+    with colw2:
+        increase_savings = st.number_input(
+            "Aumentar ahorro/inversión en (Gs./mes)", min_value=0.0, value=0.0, step=50_000.0,
+        )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("")
+    colB, colA = st.columns(2)
+    with colB:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown("#### Antes")
+        st.metric("Excedente antes de ahorro", fmt_pyg(cashflow))
+        st.metric("Tasa de ahorro", fmt_pct(savings_rate) if savings_rating.key != "na" else "—")
+        st.metric("Disponible después de ahorro", fmt_pyg(cashflow - savings_monthly))
+        st.markdown("</div>", unsafe_allow_html=True)
+    with colA:
+        new_variable_expenses = variable_expenses - reduce_variable
+        new_savings_monthly = savings_monthly + increase_savings
+        new_total_expenses = fixed_expenses + new_variable_expenses + debt_payment
+        new_cashflow = income - new_total_expenses
+        new_savings_rate = safe_div(new_savings_monthly, income)
+        new_savings_rating = rate_savings(new_savings_rate, income)
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown("#### Después")
+        st.metric(
+            "Excedente antes de ahorro", fmt_pyg(new_cashflow),
+            delta=fmt_pyg(new_cashflow - cashflow),
+        )
+        st.metric(
+            "Tasa de ahorro",
+            fmt_pct(new_savings_rate) if new_savings_rating.key != "na" else "—",
+            delta=(fmt_pct(new_savings_rate - savings_rate) if new_savings_rating.key != "na" and savings_rating.key != "na" else None),
+        )
+        st.metric(
+            "Disponible después de ahorro", fmt_pyg(new_cashflow - new_savings_monthly),
+            delta=fmt_pyg((new_cashflow - new_savings_monthly) - (cashflow - savings_monthly)),
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+with tab6:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown("### Glosario para explicarle al cliente")
+    st.caption("Definiciones breves, en lenguaje simple, para usar durante la consultoría.")
+    glosario = [
+        ("Excedente antes de ahorro", "Lo que queda del ingreso después de pagar gastos y cuotas de deuda, SIN restar lo que se ahorra. Si es negativo, se está gastando más de lo que se gana."),
+        ("Disponible después de ahorro", "El excedente menos lo que el cliente dice que ahorra. Si da negativo, el ahorro declarado no es sostenible con el ingreso actual."),
+        ("Tasa de ahorro", "Qué porcentaje del ingreso se destina a ahorro/inversión cada mes."),
+        ("Endeudamiento (DTI)", "Qué porcentaje del ingreso neto se va en cuotas de deuda. A mayor DTI, menos margen para imprevistos."),
+        ("Fondo de emergencia", "Ahorro líquido para cubrir gastos si el cliente pierde su ingreso. Se mide en 'meses de gastos cubiertos'."),
+        ("Perfil de riesgo (tolerancia)", "Qué tan cómodo se siente el cliente asumiendo pérdidas temporales a cambio de mayor retorno. Es una actitud psicológica, no una medida de cuánto riesgo puede permitirse."),
+        ("Capacidad de riesgo", "Cuánta pérdida puede absorber el cliente en la práctica, según su edad, estabilidad de ingresos, dependientes y colchón de emergencia. Es distinta de la tolerancia (arriba) y esta herramienta no la calcula por separado."),
+        ("Patrimonio neto", "Todo lo que el cliente posee (activos) menos todo lo que debe (pasivos). Puede ser 0 sin que sea un error de carga."),
+        ("Regla 50/30/20", "Guía general de presupuesto: ~50% del ingreso a necesidades, ~30% a deseos, ~20% a ahorro o pago extra de deuda. No es una meta obligatoria, es un punto de referencia."),
+        ("Mezcla ilustrativa", "Un ejemplo de cómo repartir ahorros entre instrumentos de bajo y mayor riesgo según el perfil del test. No es una recomendación de inversión concreta."),
+    ]
+    for termino, definicion in glosario:
+        with st.expander(termino):
+            st.write(definicion)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+with tab7:
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown("### Generar reporte")
     st.write(
@@ -524,6 +782,9 @@ with tab4:
             income, fixed_expenses, variable_expenses, debt_payment,
             savings_monthly, emergency_fund, net_worth,
             tuple(action_plan),
+            goal_name if has_goal else None, goal_amount if has_goal else None, goal_months if has_goal else None,
+            tuple((d.nombre, d.saldo, d.tasa_anual, d.pago_minimo) for d in debts_list),
+            tuple(commitments),
         )
 
         if st.button("🔄 Generar reporte con los datos actuales"):
@@ -563,11 +824,22 @@ with tab4:
                 health_max=int(health_max),
                 health_label=health_label,
                 action_plan=action_plan,
+                savings_goal_name=goal_name if has_goal else None,
+                savings_goal_amount=float(goal_amount) if has_goal else None,
+                savings_goal_months=int(goal_months) if has_goal else None,
+                savings_goal_required_monthly=float(goal_required_monthly) if has_goal else None,
+                savings_goal_feasible=bool(goal_feasible) if has_goal else None,
+                debts=debts_list,
+                debt_priority_note=debt_priority_note,
+                commitments=commitments,
             )
-            # Recién acá se calculan el TXT y el PDF — no en cada rerun del script.
+            # Recién acá se calculan el TXT, el PDF y el Word — no en cada rerun del script.
             st.session_state["fp_report_txt"] = rep.build_text_report(report)
             st.session_state["fp_report_pdf"] = (
                 rep.generate_pdf(report) if rep.REPORTLAB_OK else None
+            )
+            st.session_state["fp_report_docx"] = (
+                rep.generate_docx(report) if rep.DOCX_OK else None
             )
             st.session_state["fp_report_snapshot"] = report_inputs_snapshot
 
@@ -594,6 +866,15 @@ with tab4:
                 )
             elif not rep.REPORTLAB_OK:
                 st.info("Para exportar PDF, agrega `reportlab` a requirements.txt.")
+            if st.session_state.get("fp_report_docx") is not None:
+                st.download_button(
+                    "⬇️ Descargar reporte (Word)",
+                    data=st.session_state["fp_report_docx"],
+                    file_name="diagnostico_finanzas_personales.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            elif not rep.DOCX_OK:
+                st.info("Para exportar Word, agrega `python-docx` a requirements.txt.")
         else:
             st.info(
                 "Presioná \"🔄 Generar reporte con los datos actuales\" para habilitar la descarga."

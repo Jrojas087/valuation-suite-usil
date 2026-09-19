@@ -18,6 +18,13 @@ try:
 except Exception:
     REPORTLAB_OK = False
 
+DOCX_OK = True
+try:
+    import docx
+    from docx.shared import Pt, RGBColor
+except Exception:
+    DOCX_OK = False
+
 
 # ----------------------------
 # Formatos
@@ -41,9 +48,16 @@ def wrap(s: str, width: int) -> list[str]:
 # ----------------------------
 @dataclass
 class Rating:
-    key: str      # "good" | "warn" | "bad"
+    key: str      # "good" | "warn" | "bad" | "na"
     label: str
     emoji: str
+
+@dataclass
+class DebtItem:
+    nombre: str
+    saldo: float
+    tasa_anual: float   # ej. 0.24 = 24% anual
+    pago_minimo: float
 
 @dataclass
 class ClientFinReport:
@@ -89,6 +103,22 @@ class ClientFinReport:
     health_label: str
 
     action_plan: Sequence[str] = field(default_factory=list)
+
+    # --- Secciones opcionales (todas vacías/None por defecto => no aparecen en el
+    # reporte ni afectan a nadie que no las use; ver página 2 del PDF / TXT). ---
+    # Meta de ahorro
+    savings_goal_name: Optional[str] = None
+    savings_goal_amount: Optional[float] = None
+    savings_goal_months: Optional[int] = None
+    savings_goal_required_monthly: Optional[float] = None
+    savings_goal_feasible: Optional[bool] = None
+
+    # Inventario de deudas + priorización
+    debts: Sequence[DebtItem] = field(default_factory=list)
+    debt_priority_note: Optional[str] = None
+
+    # Plan editable: compromisos acordados (texto, fecha, responsable)
+    commitments: Sequence[Tuple[str, str, str]] = field(default_factory=list)
 
 DISCLAIMER = (
     "Herramienta educativa del Diplomado de Finanzas Personales. No constituye asesoría de inversión "
@@ -156,6 +186,34 @@ def build_text_report(r: ClientFinReport) -> str:
     lines.append("PLAN DE ACCIÓN SUGERIDO")
     for item in r.action_plan:
         lines.append(f"- {item}")
+
+    if r.savings_goal_amount is not None and r.savings_goal_months:
+        lines.append("")
+        lines.append("META DE AHORRO")
+        nombre_meta = r.savings_goal_name or "Meta sin nombre"
+        lines.append(f"- {nombre_meta}: {fmt_pyg(r.savings_goal_amount)} en {r.savings_goal_months} meses")
+        lines.append(f"- Ahorro mensual necesario: {fmt_pyg(r.savings_goal_required_monthly)}")
+        lines.append(f"- Ahorro mensual actual declarado: {fmt_pyg(r.savings_monthly)}")
+        veredicto = "Alcanzable con el ahorro actual" if r.savings_goal_feasible else "Requiere aumentar el ahorro mensual o extender el plazo"
+        lines.append(f"- Veredicto: {veredicto}")
+
+    if r.debts:
+        lines.append("")
+        lines.append("INVENTARIO DE DEUDAS")
+        for d in r.debts:
+            lines.append(
+                f"- {d.nombre}: saldo {fmt_pyg(d.saldo)} | tasa {fmt_pct(d.tasa_anual)} anual | "
+                f"pago mínimo {fmt_pyg(d.pago_minimo)}"
+            )
+        if r.debt_priority_note:
+            lines.append(f"- {r.debt_priority_note}")
+
+    if r.commitments:
+        lines.append("")
+        lines.append("COMPROMISOS ACORDADOS")
+        for texto, fecha, responsable in r.commitments:
+            lines.append(f"- {texto} | Fecha: {fecha or '—'} | Responsable: {responsable or '—'}")
+
     lines.append("")
     lines.append(DISCLAIMER)
     return "\n".join(lines)
@@ -387,15 +445,228 @@ def generate_pdf(r: ClientFinReport) -> bytes:
     if truncated:
         t(left+20, bot_y+12, "(continúa en el reporte TXT — ver ítems adicionales)", size=8.2, col=accent)
 
-    # Footer
-    c.setFillColor(muted)
-    c.setFont("Helvetica", 8.2)
-    disclaimer_lines = wrap(DISCLAIMER, 100)
-    brand_y = margin - 8 + (len(disclaimer_lines) - 1) * 10
-    c.drawRightString(right, brand_y, "Consultoría de Finanzas Personales — Diplomado")
-    for i, ln in enumerate(disclaimer_lines):
-        c.drawString(left, margin-8-(i*10), ln)
+    def draw_footer():
+        c.setFillColor(muted)
+        c.setFont("Helvetica", 8.2)
+        disclaimer_lines = wrap(DISCLAIMER, 100)
+        brand_y = margin - 8 + (len(disclaimer_lines) - 1) * 10
+        c.drawRightString(right, brand_y, "Consultoría de Finanzas Personales — Diplomado")
+        for i, ln in enumerate(disclaimer_lines):
+            c.drawString(left, margin-8-(i*10), ln)
+
+    draw_footer()
+
+    # --------------------------------------------------------------
+    # Página 2 (opcional): solo se agrega si hay meta de ahorro, deudas
+    # o compromisos cargados. Si nadie usa estas secciones nuevas, el
+    # PDF sigue siendo de una sola página, igual que antes.
+    # --------------------------------------------------------------
+    has_page2 = bool(r.savings_goal_amount is not None and r.savings_goal_months) or bool(r.debts) or bool(r.commitments)
+    if has_page2:
+        c.showPage()
+        c.setFillColor(bg)
+        c.rect(0, 0, W, H, stroke=0, fill=1)
+
+        y = top
+        t(left, y, "DIAGNÓSTICO DE FINANZAS PERSONALES — PÁGINA 2", size=11.5, bold=True)
+        tr(right, y, f"{r.consultant}  |  {r.client}", size=8.8, col=muted)
+        y -= 26
+
+        def section_card(title, min_h, draw_body):
+            nonlocal y
+            top_y = y
+            body_bottom = draw_body(top_y - 34)
+            h = max(min_h, (top_y - body_bottom) + 14)
+            rr(left, top_y - h, right-left, h, r=16, fill=card)
+            t(left+16, top_y-24, title, size=11.2, bold=True)
+            draw_body(top_y - 34)
+            y = top_y - h - 16
+
+        if r.savings_goal_amount is not None and r.savings_goal_months:
+            def body_goal(yy0):
+                nombre_meta = r.savings_goal_name or "Meta sin nombre"
+                yy = yy0
+                t(left+16, yy, f"{nombre_meta}: {fmt_pyg(r.savings_goal_amount)} en {r.savings_goal_months} meses", size=9.6, bold=True)
+                yy -= 16
+                t(left+16, yy, f"Ahorro mensual necesario: {fmt_pyg(r.savings_goal_required_monthly)}", size=9.2, col=muted)
+                yy -= 14
+                t(left+16, yy, f"Ahorro mensual actual declarado: {fmt_pyg(r.savings_monthly)}", size=9.2, col=muted)
+                yy -= 14
+                veredicto = "✅ Alcanzable con el ahorro actual" if r.savings_goal_feasible else "⚠️ Requiere aumentar el ahorro o extender el plazo"
+                vcol = good if r.savings_goal_feasible else warn
+                t(left+16, yy, veredicto, size=9.4, bold=True, col=vcol)
+                return yy - 10
+            section_card("Meta de ahorro", 90, body_goal)
+
+        if r.debts:
+            def body_debts(yy0):
+                yy = yy0
+                t(left+16, yy, "Deuda", size=8.6, col=muted, bold=True)
+                t(left+220, yy, "Saldo", size=8.6, col=muted, bold=True)
+                t(left+340, yy, "Tasa anual", size=8.6, col=muted, bold=True)
+                tr(right-16, yy, "Pago mínimo", size=8.6, col=muted, bold=True)
+                yy -= 14
+                for d in r.debts:
+                    t(left+16, yy, ellipsize(d.nombre, 195, size=9.0), size=9.0)
+                    t(left+220, yy, fmt_pyg(d.saldo), size=9.0)
+                    t(left+340, yy, fmt_pct(d.tasa_anual), size=9.0)
+                    tr(right-16, yy, fmt_pyg(d.pago_minimo), size=9.0)
+                    yy -= 14
+                if r.debt_priority_note:
+                    yy -= 4
+                    yy = para(left+16, yy, r.debt_priority_note, width_chars=100, size=8.8, leading=11, col=accent)
+                return yy
+            section_card("Inventario de deudas", 90, body_debts)
+
+        if r.commitments:
+            def body_commit(yy0):
+                yy = yy0
+                for texto, fecha, responsable in r.commitments:
+                    for ln in wrap(f"• {texto}", 100):
+                        t(left+16, yy, ln, size=9.0, col=muted)
+                        yy -= 12
+                    t(left+24, yy, f"Fecha: {fecha or '—'}   |   Responsable: {responsable or '—'}", size=8.4, col=accent)
+                    yy -= 16
+                return yy
+            section_card("Compromisos acordados", 90, body_commit)
+
+        draw_footer()
 
     c.showPage()
     c.save()
+    return buf.getvalue()
+
+
+# ----------------------------
+# Word (.docx) — mismo contenido que el TXT/PDF, formato editable
+# ----------------------------
+def generate_docx(r: ClientFinReport) -> bytes:
+    if not DOCX_OK:
+        raise RuntimeError("python-docx no está disponible. Agregar `python-docx` a requirements.txt.")
+
+    MUTED = RGBColor(0x55, 0x55, 0x55)
+    GOOD = RGBColor(0x1E, 0x8E, 0x5A)
+    WARN = RGBColor(0xB8, 0x86, 0x00)
+    BAD = RGBColor(0xC0, 0x39, 0x39)
+    rating_color = {"good": GOOD, "warn": WARN, "bad": BAD}
+
+    doc = docx.Document()
+
+    doc.add_heading("Diagnóstico de Finanzas Personales — Reporte de Consultoría", level=1)
+
+    p = doc.add_paragraph()
+    p.add_run(f"Consultor/a: {r.consultant}   |   Cliente: {r.client}   |   Fecha: {r.report_date}").bold = True
+    edad = "—" if r.age is None else str(r.age)
+    doc.add_paragraph(f"Edad: {edad}  |  Ocupación: {r.occupation}  |  Dependientes: {r.dependents}")
+    doc.add_paragraph(f"Objetivo principal: {r.objective}")
+
+    salud = doc.add_paragraph()
+    run = salud.add_run(f"Salud financiera general: {r.health_label} ({r.health_score}/{r.health_max})")
+    run.bold = True
+    run.font.color.rgb = GOOD if r.health_score >= 6 else (BAD if r.health_score <= 3 else WARN)
+
+    doc.add_heading("Perfil de riesgo", level=2)
+    doc.add_paragraph(f"{r.risk_category} — {r.risk_score}/{r.risk_max} pts", style=None).runs[0].bold = True
+    doc.add_paragraph(r.risk_description)
+    doc.add_paragraph(
+        f"Mezcla ilustrativa (no es recomendación de inversión): {r.risk_alloc_fixed}% bajo riesgo/ahorro — "
+        f"{r.risk_alloc_variable}% mayor riesgo/crecimiento"
+    )
+    nota = doc.add_paragraph(RISK_METHOD_NOTE)
+    nota.runs[0].italic = True
+    nota.runs[0].font.color.rgb = MUTED
+
+    doc.add_heading("Diagnóstico financiero rápido", level=2)
+    tabla_datos = [
+        ("Ingreso mensual", fmt_pyg(r.income)),
+        ("Gastos fijos", fmt_pyg(r.fixed_expenses)),
+        ("Gastos variables", fmt_pyg(r.variable_expenses)),
+        ("Cuota de deudas", fmt_pyg(r.debt_payment)),
+        ("Ahorro/inversión mensual", fmt_pyg(r.savings_monthly)),
+        ("Fondo de emergencia actual", fmt_pyg(r.emergency_fund)),
+    ]
+    if r.net_worth is not None:
+        tabla_datos.append(("Patrimonio neto aproximado", fmt_pyg(r.net_worth)))
+    table = doc.add_table(rows=0, cols=2)
+    table.style = "Light Grid Accent 1"
+    for label, val in tabla_datos:
+        row = table.add_row().cells
+        row[0].text = label
+        row[1].text = val
+
+    doc.add_heading("Indicadores", level=2)
+    savings_txt = "No calculable (sin ingreso)" if r.savings_rating.key == "na" else fmt_pct(r.savings_rate)
+    dti_txt = "No calculable (sin ingreso)" if r.dti_rating.key == "na" else fmt_pct(r.dti)
+    emergency_txt = "No calculable (sin gastos)" if r.emergency_rating.key == "na" else f"{r.emergency_months:.1f} meses"
+    available_after_savings = r.cashflow - r.savings_monthly
+    indicadores = [
+        ("Excedente antes de ahorro", fmt_pyg(r.cashflow), r.cashflow_rating),
+        ("Tasa de ahorro", savings_txt, r.savings_rating),
+        ("Endeudamiento (cuota/ingreso)", dti_txt, r.dti_rating),
+        ("Fondo de emergencia", emergency_txt, r.emergency_rating),
+    ]
+    for label, val, rating in indicadores:
+        para_ind = doc.add_paragraph(style="List Bullet")
+        para_ind.add_run(f"{label}: {val} — ").bold = False
+        run_rating = para_ind.add_run(f"{rating.label}")
+        run_rating.bold = True
+        run_rating.font.color.rgb = rating_color.get(rating.key, MUTED)
+    p_disp = doc.add_paragraph(style="List Bullet")
+    p_disp.add_run(f"Disponible después de ahorro (excedente − ahorro declarado): {fmt_pyg(available_after_savings)}")
+    if available_after_savings < 0:
+        warn_p = doc.add_paragraph(
+            "⚠ El ahorro declarado supera el excedente disponible; verificar con el cliente el origen de "
+            "esos fondos."
+        )
+        warn_p.runs[0].font.color.rgb = BAD
+
+    doc.add_heading("Plan de acción sugerido", level=2)
+    for item in r.action_plan:
+        doc.add_paragraph(item, style="List Bullet")
+
+    if r.savings_goal_amount is not None and r.savings_goal_months:
+        doc.add_heading("Meta de ahorro", level=2)
+        nombre_meta = r.savings_goal_name or "Meta sin nombre"
+        doc.add_paragraph(f"{nombre_meta}: {fmt_pyg(r.savings_goal_amount)} en {r.savings_goal_months} meses")
+        doc.add_paragraph(f"Ahorro mensual necesario: {fmt_pyg(r.savings_goal_required_monthly)}")
+        doc.add_paragraph(f"Ahorro mensual actual declarado: {fmt_pyg(r.savings_monthly)}")
+        veredicto = "Alcanzable con el ahorro actual" if r.savings_goal_feasible else "Requiere aumentar el ahorro mensual o extender el plazo"
+        p_ver = doc.add_paragraph()
+        p_ver.add_run(f"Veredicto: {veredicto}").bold = True
+
+    if r.debts:
+        doc.add_heading("Inventario de deudas", level=2)
+        dt = doc.add_table(rows=1, cols=4)
+        dt.style = "Light Grid Accent 1"
+        hdr = dt.rows[0].cells
+        hdr[0].text, hdr[1].text, hdr[2].text, hdr[3].text = "Deuda", "Saldo", "Tasa anual", "Pago mínimo"
+        for d in r.debts:
+            row = dt.add_row().cells
+            row[0].text = d.nombre
+            row[1].text = fmt_pyg(d.saldo)
+            row[2].text = fmt_pct(d.tasa_anual)
+            row[3].text = fmt_pyg(d.pago_minimo)
+        if r.debt_priority_note:
+            doc.add_paragraph(r.debt_priority_note).runs[0].italic = True
+
+    if r.commitments:
+        doc.add_heading("Compromisos acordados", level=2)
+        ct = doc.add_table(rows=1, cols=3)
+        ct.style = "Light Grid Accent 1"
+        hdr = ct.rows[0].cells
+        hdr[0].text, hdr[1].text, hdr[2].text = "Compromiso", "Fecha", "Responsable"
+        for texto, fecha, responsable in r.commitments:
+            row = ct.add_row().cells
+            row[0].text = texto
+            row[1].text = fecha or "—"
+            row[2].text = responsable or "—"
+
+    doc.add_paragraph()
+    disc = doc.add_paragraph(DISCLAIMER)
+    disc.runs[0].italic = True
+    disc.runs[0].font.size = Pt(8.5)
+    disc.runs[0].font.color.rgb = MUTED
+
+    buf = io.BytesIO()
+    doc.save(buf)
     return buf.getvalue()
