@@ -120,6 +120,11 @@ class ClientFinReport:
     # Plan editable: compromisos acordados (texto, fecha, responsable)
     commitments: Sequence[Tuple[str, str, str]] = field(default_factory=list)
 
+    # Cartera modelo sugerida (por categoría de instrumento, no títulos específicos)
+    portfolio_tier: Optional[str] = None  # "Conservadora" | "Moderada" | "Arriesgada"
+    portfolio_categories: Sequence[Tuple[str, int]] = field(default_factory=list)
+    portfolio_age_note: Optional[str] = None
+
 DISCLAIMER = (
     "Herramienta educativa del Diplomado de Finanzas Personales. No constituye asesoría de inversión "
     "regulada; valida cualquier decisión relevante con un asesor financiero certificado."
@@ -134,6 +139,12 @@ RISK_METHOD_NOTE = (
     "Nota metodológica: este puntaje refleja principalmente la tolerancia al riesgo (actitud) del "
     "cliente. Antes de definir una mezcla de inversión, contrasta este resultado con su capacidad de "
     "riesgo real (edad, estabilidad de ingresos, dependientes y fondo de emergencia)."
+)
+
+PORTFOLIO_DISCLAIMER = (
+    "Cartera modelo con fines educativos, por categoría de instrumento financiero (no recomienda "
+    "títulos, emisores ni productos específicos). No es asesoría de inversión personalizada ni "
+    "sustituye la debida diligencia de un asesor financiero certificado."
 )
 
 
@@ -156,6 +167,16 @@ def build_text_report(r: ClientFinReport) -> str:
         f"{r.risk_alloc_fixed}% bajo riesgo/ahorro — {r.risk_alloc_variable}% mayor riesgo/crecimiento"
     )
     lines.append(RISK_METHOD_NOTE)
+
+    if r.portfolio_tier and r.portfolio_categories:
+        lines.append("")
+        lines.append(f"CARTERA MODELO SUGERIDA: {r.portfolio_tier}")
+        if r.portfolio_age_note:
+            lines.append(f"({r.portfolio_age_note})")
+        for categoria, pct in r.portfolio_categories:
+            lines.append(f"- {categoria}: {pct}%")
+        lines.append(PORTFOLIO_DISCLAIMER)
+
     lines.append("")
     lines.append("DIAGNÓSTICO FINANCIERO RÁPIDO")
     lines.append(f"- Ingreso mensual: {fmt_pyg(r.income)}")
@@ -475,11 +496,17 @@ def generate_pdf(r: ClientFinReport) -> bytes:
     draw_footer()
 
     # --------------------------------------------------------------
-    # Página 2 (opcional): solo se agrega si hay meta de ahorro, deudas
-    # o compromisos cargados. Si nadie usa estas secciones nuevas, el
-    # PDF sigue siendo de una sola página, igual que antes.
+    # Página 2: se agrega si hay cartera modelo, meta de ahorro, deudas o
+    # compromisos cargados. La cartera modelo sugerida se calcula siempre que
+    # el test de riesgo esté completo, así que en la práctica el PDF pasa a
+    # ser de 2 páginas en el caso normal (antes era de 1 sola cuando nadie
+    # usaba las secciones opcionales).
     # --------------------------------------------------------------
-    has_page2 = bool(r.savings_goal_amount is not None and r.savings_goal_months) or bool(r.debts) or bool(r.commitments)
+    has_page2 = (
+        bool(r.portfolio_tier and r.portfolio_categories)
+        or bool(r.savings_goal_amount is not None and r.savings_goal_months)
+        or bool(r.debts) or bool(r.commitments)
+    )
     if has_page2:
         c.showPage()
         c.setFillColor(bg)
@@ -499,6 +526,45 @@ def generate_pdf(r: ClientFinReport) -> bytes:
             t(left+16, top_y-24, title, size=11.2, bold=True)
             draw_body(top_y - 34)
             y = top_y - h - 16
+
+        if r.portfolio_tier and r.portfolio_categories:
+            def body_portfolio(yy0):
+                yy = yy0
+                t(left+16, yy, f"Nivel sugerido: {r.portfolio_tier}", size=9.6, bold=True, col=accent)
+                yy -= 16
+                if r.portfolio_age_note:
+                    yy = para(left+16, yy, r.portfolio_age_note, width_chars=112, size=8.4, leading=10.5, col=muted)
+                    yy -= 4
+
+                palette = [
+                    colors.Color(good.red, good.green, good.blue, alpha=0.55),
+                    colors.Color(accent.red, accent.green, accent.blue, alpha=0.75),
+                    colors.Color(accent.red, accent.green, accent.blue, alpha=0.40),
+                    colors.Color(warn.red, warn.green, warn.blue, alpha=0.55),
+                    colors.Color(bad.red, bad.green, bad.blue, alpha=0.55),
+                ]
+                bar_x = left+16
+                bar_w = (right-left) - 32
+                bar_h = 16
+                c.setFillColor(colors.Color(1, 1, 1, alpha=0.05))
+                c.rect(bar_x, yy-bar_h, bar_w, bar_h, stroke=0, fill=1)
+                x_cursor = bar_x
+                for i, (_categoria, pct) in enumerate(r.portfolio_categories):
+                    seg_w = bar_w * (pct/100.0)
+                    c.setFillColor(palette[i % len(palette)])
+                    c.rect(x_cursor, yy-bar_h, seg_w, bar_h, stroke=0, fill=1)
+                    x_cursor += seg_w
+                yy -= bar_h + 14
+
+                for i, (categoria, pct) in enumerate(r.portfolio_categories):
+                    c.setFillColor(palette[i % len(palette)])
+                    c.rect(left+16, yy-8, 10, 10, stroke=0, fill=1)
+                    t(left+32, yy, f"{categoria}: {pct}%", size=9.2, col=text)
+                    yy -= 15
+                yy -= 4
+                yy = para(left+16, yy, PORTFOLIO_DISCLAIMER, width_chars=115, size=7.8, leading=10, col=muted)
+                return yy
+            section_card("Cartera modelo sugerida (por categoría de instrumento)", 150, body_portfolio)
 
         if r.savings_goal_amount is not None and r.savings_goal_months:
             def body_goal(yy0):
@@ -593,6 +659,27 @@ def generate_docx(r: ClientFinReport) -> bytes:
     nota = doc.add_paragraph(RISK_METHOD_NOTE)
     nota.runs[0].italic = True
     nota.runs[0].font.color.rgb = MUTED
+
+    if r.portfolio_tier and r.portfolio_categories:
+        doc.add_heading("Cartera modelo sugerida", level=2)
+        p_tier = doc.add_paragraph()
+        p_tier.add_run(f"Nivel sugerido: {r.portfolio_tier}").bold = True
+        if r.portfolio_age_note:
+            p_age = doc.add_paragraph(r.portfolio_age_note)
+            p_age.runs[0].italic = True
+            p_age.runs[0].font.color.rgb = MUTED
+        pt = doc.add_table(rows=1, cols=2)
+        pt.style = "Light Grid Accent 1"
+        hdr = pt.rows[0].cells
+        hdr[0].text, hdr[1].text = "Categoría de instrumento", "% sugerido"
+        for categoria, pct in r.portfolio_categories:
+            row = pt.add_row().cells
+            row[0].text = categoria
+            row[1].text = f"{pct}%"
+        p_disc = doc.add_paragraph(PORTFOLIO_DISCLAIMER)
+        p_disc.runs[0].italic = True
+        p_disc.runs[0].font.size = Pt(8.5)
+        p_disc.runs[0].font.color.rgb = MUTED
 
     doc.add_heading("Diagnóstico financiero rápido", level=2)
     tabla_datos = [

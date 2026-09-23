@@ -203,6 +203,71 @@ def classify_risk(score: int):
 
 
 # ============================================================
+# Cartera modelo sugerida (por categoría de instrumento, no títulos
+# específicos) — 3 niveles, mapeados desde las 5 categorías del test y
+# ajustados por edad como proxy simple de CAPACIDAD de riesgo (no solo
+# tolerancia/actitud). Es un modelo educativo e ilustrativo, no una
+# recomendación de inversión personalizada.
+# ============================================================
+PORTFOLIO_MODELS = {
+    "Conservadora": [
+        ("Liquidez / Ahorro", 15),
+        ("CDA (Certificados de Depósito de Ahorro)", 40),
+        ("Bonos gubernamentales", 30),
+        ("Bonos corporativos", 10),
+        ("Renta variable (acciones/fondos)", 5),
+    ],
+    "Moderada": [
+        ("Liquidez / Ahorro", 10),
+        ("CDA (Certificados de Depósito de Ahorro)", 25),
+        ("Bonos gubernamentales", 25),
+        ("Bonos corporativos", 20),
+        ("Renta variable (acciones/fondos)", 20),
+    ],
+    "Arriesgada": [
+        ("Liquidez / Ahorro", 5),
+        ("CDA (Certificados de Depósito de Ahorro)", 10),
+        ("Bonos gubernamentales", 15),
+        ("Bonos corporativos", 20),
+        ("Renta variable (acciones/fondos)", 50),
+    ],
+}
+PORTFOLIO_TIERS_ORDER = ["Conservadora", "Moderada", "Arriesgada"]
+
+# Mapeo de las 5 categorías del test (tolerancia) a los 3 niveles de cartera.
+PORTFOLIO_TIER_BY_RISK_CATEGORY = {
+    "Conservador": "Conservadora",
+    "Moderado": "Conservadora",
+    "Balanceado": "Moderada",
+    "Crecimiento": "Arriesgada",
+    "Agresivo": "Arriesgada",
+}
+
+# Edad a partir de la cual se aplica el ajuste hacia un nivel más conservador.
+# No se sube de nivel para clientes jóvenes: el puntaje del test ya define el
+# techo de riesgo tolerado; la edad solo puede bajarlo (nunca subirlo), porque
+# un horizonte largo no vuelve "más tolerante" a alguien que no lo es.
+PORTFOLIO_AGE_CONSERVATIVE_THRESHOLD = 60
+
+def suggest_portfolio(risk_category: str, age):
+    """Devuelve (nivel, [(categoría, %), ...], nota_de_edad_o_None)."""
+    base_tier = PORTFOLIO_TIER_BY_RISK_CATEGORY.get(risk_category)
+    if base_tier is None:
+        return None, [], None
+    tier = base_tier
+    age_note = None
+    idx = PORTFOLIO_TIERS_ORDER.index(base_tier)
+    if age is not None and age >= PORTFOLIO_AGE_CONSERVATIVE_THRESHOLD and idx > 0:
+        tier = PORTFOLIO_TIERS_ORDER[idx - 1]
+        age_note = (
+            f"Ajustado un nivel más conservador que el resultado del test (que por sí solo sugería "
+            f"'{base_tier}') por la edad del cliente ({int(age)} años): a mayor edad, menor horizonte "
+            f"para recuperarse de una caída de mercado, aunque su actitud psicológica tolere más riesgo."
+        )
+    return tier, PORTFOLIO_MODELS[tier], age_note
+
+
+# ============================================================
 # Tabs
 # ============================================================
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
@@ -266,10 +331,12 @@ with tab1:
             "las 10 están contestadas, para no asumir una actitud que el cliente no expresó."
         )
         alloc_fixed = alloc_variable = 0
+        portfolio_tier, portfolio_categories, portfolio_age_note = None, [], None
         st.info(f"🕓 {answered_count}/{len(RISK_QUESTIONS)} preguntas respondidas — {risk_desc}")
     else:
         risk_score = int(sum(answers))
         risk_category, risk_desc, alloc_fixed, alloc_variable = classify_risk(risk_score)
+        portfolio_tier, portfolio_categories, portfolio_age_note = suggest_portfolio(risk_category, age)
         c1, c2 = st.columns([0.3, 0.7])
         with c1:
             st.metric("Puntaje", f"{risk_score} / {risk_max}")
@@ -281,6 +348,23 @@ with tab1:
                 f"{alloc_fixed}% bajo riesgo/ahorro — {alloc_variable}% mayor riesgo/crecimiento."
             )
     st.markdown("</div>", unsafe_allow_html=True)
+
+    if portfolio_tier:
+        st.markdown("")
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown("### Cartera modelo sugerida")
+        st.caption(
+            "Según el perfil de riesgo del test y la edad del cliente, por categoría de instrumento "
+            "(no recomienda títulos, emisores ni productos específicos)."
+        )
+        st.markdown(f"**Nivel sugerido: {portfolio_tier}**")
+        if portfolio_age_note:
+            st.info(f"ℹ️ {portfolio_age_note}")
+        for categoria, pct in portfolio_categories:
+            st.write(f"{categoria} — **{pct}%**")
+            st.progress(pct / 100)
+        st.caption(rep.PORTFOLIO_DISCLAIMER)
+        st.markdown("</div>", unsafe_allow_html=True)
 
 with tab2:
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -785,6 +869,7 @@ with tab7:
             goal_name if has_goal else None, goal_amount if has_goal else None, goal_months if has_goal else None,
             tuple((d.nombre, d.saldo, d.tasa_anual, d.pago_minimo) for d in debts_list),
             tuple(commitments),
+            portfolio_tier, tuple(portfolio_categories),
         )
 
         if st.button("🔄 Generar reporte con los datos actuales"):
@@ -832,6 +917,9 @@ with tab7:
                 debts=debts_list,
                 debt_priority_note=debt_priority_note,
                 commitments=commitments,
+                portfolio_tier=portfolio_tier,
+                portfolio_categories=portfolio_categories,
+                portfolio_age_note=portfolio_age_note,
             )
             # Recién acá se calculan el TXT, el PDF y el Word — no en cada rerun del script.
             st.session_state["fp_report_txt"] = rep.build_text_report(report)
