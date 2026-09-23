@@ -76,6 +76,11 @@ def safe_div(a: float, b: float) -> float:
     return a / b if b else 0.0
 
 def rate_cashflow(flow: float, income: float) -> rep.Rating:
+    # OJO: "na" solo cuando el formulario está realmente vacío (sin ingreso NI
+    # gastos, flow=0). Si income=0 pero flow<0 (hay gastos sin ingreso alguno),
+    # es un déficit real y debe seguir en rojo — marcarlo "na" lo taparía.
+    if income <= 0 and flow == 0:
+        return rep.Rating("na", "No calculable", "⚪")
     if flow < 0:
         return rep.Rating("bad", "Déficit", "🔴")
     ratio = safe_div(flow, income)
@@ -419,7 +424,9 @@ with tab2:
     cashflow = income - total_expenses
     savings_rate = safe_div(savings_monthly, income)
     dti = safe_div(debt_payment, income)
-    emergency_months = safe_div(emergency_fund, (fixed_expenses + variable_expenses + debt_payment)) if (fixed_expenses + variable_expenses + debt_payment) else 0.0
+    # safe_div ya devuelve 0.0 si el denominador es 0; total_expenses ya está
+    # calculado arriba, no hace falta re-sumar fixed+variable+debt_payment.
+    emergency_months = safe_div(emergency_fund, total_expenses)
 
     cashflow_rating = rate_cashflow(cashflow, income)
     savings_rating = rate_savings(savings_rate, income)
@@ -462,12 +469,17 @@ with tab2:
         )
 
     diagnostic_ratings = [cashflow_rating, savings_rating, dti_rating, emergency_rating]
-    health_points = sum(2 if r.key == "good" else (1 if r.key == "warn" else 0) for r in diagnostic_ratings)
-    health_max = 8
+    # Los indicadores "na" (dato no calculable, ej. sin ingreso) se excluyen del
+    # denominador en vez de contar como 0 puntos: un dato faltante no es lo
+    # mismo que un semáforo en rojo, y no debería bajar el puntaje máximo
+    # posible de forma injusta.
+    _rated = [r for r in diagnostic_ratings if r.key != "na"]
+    health_max = len(_rated) * 2 if _rated else 8
+    health_points = sum(2 if r.key == "good" else (1 if r.key == "warn" else 0) for r in _rated)
     has_critical = any(r.key == "bad" for r in diagnostic_ratings)
-    if health_points <= 3:
+    if health_points <= health_max * 0.375:
         health_label = "Situación crítica"
-    elif health_points <= 5 or has_critical:
+    elif health_points <= health_max * 0.625 or has_critical:
         # No mostramos "Sólida" si hay al menos un indicador en rojo (ej. fondo de
         # emergencia en 0), aunque el puntaje agregado sea alto: un solo indicador
         # crítico no debería quedar tapado por el promedio.
@@ -479,10 +491,48 @@ with tab2:
     st.markdown('<div class="card" style="text-align:center;">', unsafe_allow_html=True)
     st.markdown(f"### Salud financiera general: **{health_label}** ({health_points}/{health_max})")
     st.markdown("</div>", unsafe_allow_html=True)
-    st.caption(
-        "Referencia opcional: la regla 50/30/20 sugiere destinar ~50% del ingreso a necesidades, ~30% a "
-        "deseos y ~20% a ahorro/deuda extra. Es una guía general, no una meta exacta para todos los casos."
-    )
+    st.markdown("")
+    with st.expander("📊 Regla 50/30/20 — ¿cómo se compara el cliente?"):
+        st.caption(
+            "La regla 50/30/20 sugiere destinar ~50% del ingreso a necesidades (gastos fijos + deudas), "
+            "~30% a deseos (gastos variables), y ~20% a ahorro/inversión. Es una referencia general, no "
+            "una meta exacta para todos los casos."
+        )
+        if income > 0:
+            nec_pct = safe_div(fixed_expenses + debt_payment, income)
+            deseo_pct = safe_div(variable_expenses, income)
+            ahorro_pct = safe_div(savings_monthly, income)
+
+            def pct_pill(actual, target, label_over, label_ok):
+                if actual > target * 1.10:
+                    return f"🔴 {label_over} ({actual*100:.0f}% vs ~{target*100:.0f}%)"
+                if actual > target:
+                    return f"🟡 Ajustado ({actual*100:.0f}% vs ~{target*100:.0f}%)"
+                return f"🟢 {label_ok} ({actual*100:.0f}% vs ~{target*100:.0f}%)"
+
+            c5020_1, c5020_2, c5020_3 = st.columns(3)
+            c5020_1.metric("Necesidades", f"{nec_pct*100:.0f}%", help="Gastos fijos + cuota de deudas")
+            c5020_1.caption(pct_pill(nec_pct, 0.50, "Por encima del 50%", "Dentro del 50%"))
+
+            c5020_2.metric("Deseos", f"{deseo_pct*100:.0f}%", help="Gastos variables")
+            c5020_2.caption(pct_pill(deseo_pct, 0.30, "Por encima del 30%", "Dentro del 30%"))
+
+            c5020_3.metric("Ahorro", f"{ahorro_pct*100:.0f}%", help="Ahorro/inversión mensual declarado")
+            if ahorro_pct >= 0.20:
+                c5020_3.caption(f"🟢 Excelente ({ahorro_pct*100:.0f}% vs ~20%)")
+            elif ahorro_pct >= 0.10:
+                c5020_3.caption(f"🟡 En desarrollo ({ahorro_pct*100:.0f}% vs ~20%)")
+            else:
+                c5020_3.caption(f"🔴 Por debajo del 20% ({ahorro_pct*100:.0f}%)")
+
+            total_asignado = nec_pct + deseo_pct + ahorro_pct
+            if abs(total_asignado - 1.0) > 0.02:
+                st.info(
+                    f"ℹ️ La suma de las tres categorías ({total_asignado*100:.0f}%) no da 100% porque los "
+                    "montos cargados no cubren todo el ingreso (queda dinero sin asignar) o lo superan."
+                )
+        else:
+            st.caption("Completá el ingreso mensual para ver la comparativa 50/30/20.")
 
     st.markdown("")
     with st.expander("💳 Inventario de deudas (opcional) — para decidir cuál pagar primero"):
@@ -967,6 +1017,15 @@ with tab7:
             st.info(
                 "Presioná \"🔄 Generar reporte con los datos actuales\" para habilitar la descarga."
             )
+
+# Aviso temprano (visible desde cualquier pestaña) si todavía no se tocaron
+# los valores de ejemplo precargados — complementa el checkbox de
+# confirmación de la pestaña Reporte, que recién se ve al llegar ahí.
+if not consultant.strip() and not client.strip() and income == 6_000_000.0:
+    st.sidebar.warning(
+        "⚠️ Los datos parecen ser los valores de ejemplo precargados. Cargá los datos reales del "
+        "cliente antes de generar el reporte."
+    )
 
 st.sidebar.divider()
 st.sidebar.subheader("📶 Progreso de la consultoría")
